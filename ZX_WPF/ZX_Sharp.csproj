@@ -100,6 +100,12 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+    <None Include="Images\1942.z80" />
+    <None Include="Images\48.ROM" />
+    <None Include="Images\Diag.ROM" />
+    <None Include="Images\Diag1.rom" />
+    <None Include="Images\Diag2.ROM" />
+    <None Include="Images\Saboteur.z80" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
