@@ -5,8 +5,13 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:ZX_WPF"
         mc:Ignorable="d"
-        Title="MainWindow" Width="325px" Height="290px" KeyDown="MainGrid_KeyDown" KeyUp="Window_KeyUp" Closing="Window_Closing">
+        Title="MainWindow" Width="325px" Height="290px" Closing="Window_Closing">
     <Grid x:Name="MainGrid">
-        <Canvas x:Name="canvas" Width="704px" Height="606px" KeyDown="MainGrid_KeyDown"></Canvas>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="20"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Rectangle x:Name="keyIndicator"  Width="10" Height="10" Fill="Red"></Rectangle>
+        <Image Grid.Row="2" x:Name="screenImage" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ></Image>
     </Grid>
 </Window>

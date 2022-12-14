@@ -143,7 +143,7 @@ namespace Speccy.Z80_CPU
 
             for (int f = 0; f < 49152; f++)
             {
-                    _memory.WriteByte(16384+f, z80.RAM_BANK[f]);
+                _memory.WriteByte(16384 + f, z80.RAM_BANK[f]);
             }
         }
 

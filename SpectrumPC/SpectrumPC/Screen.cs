@@ -1,5 +1,4 @@
-﻿using System.Drawing;
-
+﻿
 namespace Speccy
 {
     public class Display
@@ -16,13 +15,12 @@ namespace Speccy
 
         public int BorderColor;
         private bool _flashReversed = false;
-       
+
         private readonly Memory _ram;
         public static int Width => 352;
         public static int Height => 296;
         //public int[,] pixelBuffer = new int[257, 193]; //Left border * right border = 48 , 256 working area //top=55,bottom=56,working area =192
         public int[,] pixelBuffer = new int[Width, Height]; //Left border * right border = 48 , 256 working area //top=55,bottom=56,working area =192
-        private readonly Bitmap _bitmap = new Bitmap(Width, Height);
         private readonly int[] _ulaColours =
         {
             0x000000, // Black
@@ -61,27 +59,13 @@ namespace Speccy
                         pos += 32;
                     }
         }
-
-        public Bitmap GetDisplayImage()
-        {
-            GetDisplayBuffer();
-            for (var y = 0; y < Height; y++)
-            {
-                for (var x = 0; x < Width; x++)
-                {
-                    _bitmap.SetPixel(x, y, ToColor(pixelBuffer[x, y]));
-                }
-            }
-            return _bitmap;
-        }
-
         public void ReverseFlash()
         {
             _flashReversed = !_flashReversed;
         }
 
         public void GetDisplayBuffer()
-        {          
+        {
             for (int i = 0; i < Width * Height; i++) pixelBuffer[i % Width, i / Width] = _ulaColours[BorderColor];
             for (var ay = 0; ay < AttributeHeight; ay++)
                 for (var ax = 0; ax < AttributeWidth; ax++)
@@ -110,13 +94,6 @@ namespace Speccy
                         }
                     }
                 }
-        }
-        private Color ToColor(int rgb)
-        {
-            return Color.FromArgb(0xFF,
-                                  (byte)((rgb & 0xff0000) >> 0x10),
-                                  (byte)((rgb & 0xff00) >> 8),
-                                  (byte)(rgb & 0xff));
         }
     }
 }

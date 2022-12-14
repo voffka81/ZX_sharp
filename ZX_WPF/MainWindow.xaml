@@ -7,6 +7,14 @@
         mc:Ignorable="d"
         Title="MainWindow" Width="325px" Height="290px">
     <Grid x:Name="MainGrid">
-        <Button Name="btnOpenFile" Height="30" Width="70" Click="btnOpenFile_Click">Load image</Button>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="40"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <StackPanel Orientation="Horizontal">
+            <Rectangle x:Name="keyIndicator"  Width="10" Height="10" Fill="Red"></Rectangle>
+            <Button Name="btnOpenFile" Height="30" Width="70" Click="btnOpenFile_Click">Load image</Button>
+        </StackPanel>
+        <Image Grid.Row="2" x:Name="screenImage" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ></Image>
     </Grid>
 </Window>

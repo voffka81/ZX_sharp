@@ -1,7 +1,6 @@
-﻿using System;
-using System.Threading.Tasks;
-using Speccy.Filetypes;
+﻿using Speccy.Filetypes;
 using Speccy.Z80_CPU;
+using System;
 
 namespace Speccy
 {
@@ -24,7 +23,7 @@ namespace Speccy
 
         public bool ComputerRunning;
 
-        public float[] AudioSamples { get; private set; } 
+        public float[] AudioSamples { get; private set; }
 
         public Computer()
         {
@@ -51,31 +50,28 @@ namespace Speccy
 
         int _flashCount = 0;
         int _soundCount = 0;
-        public async void ExecuteCycle()
+        public void ExecuteCycle()
         {
-            //while (ComputerRunning)
+            _displayUnit.BorderColor = (_IOdataBus as Bus16Bit).BorderColor;
+            while (_z80.tstates < _z80.event_next_event)
             {
-                _displayUnit.BorderColor = (_IOdataBus as Bus16Bit).BorderColor;
-                while (_z80.tstates < _z80.event_next_event)
-                {
-                    _beeperDevice.cpuTacts=_z80.tstates;
-                    _z80.Cycle();
-                }
+                _beeperDevice.cpuTacts = _z80.tstates;
+                _z80.Cycle();
+            }
 
-                _z80.tstates -= _z80.event_next_event;
-                _z80.Interrupt();
-                _flashCount++;
-                if (_flashCount >= 50)
-                {
+            _z80.tstates -= _z80.event_next_event;
+            _z80.Interrupt();
+            _flashCount++;
+            if (_flashCount >= 50)
+            {
 
-                    _flashCount = 0;
-                    _displayUnit.ReverseFlash();
-
-                }
-                AudioSamples=_beeperDevice.AudioSamples;
-                _beeperDevice.Initialize();
+                _flashCount = 0;
+                _displayUnit.ReverseFlash();
 
             }
+            AudioSamples = _beeperDevice.AudioSamples;
+            _beeperDevice.Initialize();
+
         }
 
 

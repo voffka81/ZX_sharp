@@ -1,9 +1,5 @@
-﻿using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
-using Speccy;
+﻿using Speccy;
 using System;
-using System.Threading.Tasks;
 
 namespace ZX_sharp
 {
@@ -64,7 +60,7 @@ namespace ZX_sharp
             pixel = new Texture2D(GraphicsDevice, 1, 1);
 
             pixel.SetData(new Color[] { Color.White });
-           // Task.Factory.StartNew(() => _speccy.ExecuteCycle());
+            // Task.Factory.StartNew(() => _speccy.ExecuteCycle());
         }
 
         /// <summary>

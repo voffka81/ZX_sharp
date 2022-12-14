@@ -1,5 +1,5 @@
-﻿using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Audio;
+﻿//using Microsoft.Xna.Framework;
+//using Microsoft.Xna.Framework.Audio;
 using System;
 
 namespace ZX_sharp
@@ -8,13 +8,13 @@ namespace ZX_sharp
     {
         private const int SampleRate = 44100;
         private const int ChannelsCount = 2;
-        private DynamicSoundEffectInstance _instance;
+        // private DynamicSoundEffectInstance _instance;
 
         public const int SamplesPerBuffer = 1000;
         private float[,] _workingBuffer;
         private byte[] _xnaBuffer;
 
-        public int PendingBufferCount => _instance.PendingBufferCount;
+        // public int PendingBufferCount => _instance.PendingBufferCount;
 
         public AudioRender()
         {
@@ -23,16 +23,16 @@ namespace ZX_sharp
             _xnaBuffer = new byte[ChannelsCount * SamplesPerBuffer * bytesPerSample];
 
             // On LoadContent
-            _instance = new DynamicSoundEffectInstance(SampleRate, (ChannelsCount == 2) ? AudioChannels.Stereo : AudioChannels.Mono);
-            _instance.Play();
+            // _instance = new DynamicSoundEffectInstance(SampleRate, (ChannelsCount == 2) ? AudioChannels.Stereo : AudioChannels.Mono);
+            //  _instance.Play();
         }
 
         public void SubmitBuffer(float[] buffer)
         {
-            if (_instance.PendingBufferCount > 3 || buffer == null) return;
+            // if (_instance.PendingBufferCount > 3 || buffer == null) return;
             FillWorkingBuffer(buffer);
             ConvertBuffer(_workingBuffer, _xnaBuffer);
-            _instance.SubmitBuffer(_xnaBuffer);
+            //  _instance.SubmitBuffer(_xnaBuffer);
             for (int i = 0; i < SamplesPerBuffer; i++)
             {
                 _workingBuffer[0, i] = 0;
@@ -51,7 +51,7 @@ namespace ZX_sharp
         /// </summary>
         private void FillWorkingBuffer(float[] buffer)
         {
-            for (int i = 0; i < SamplesPerBuffer/10; i++)
+            for (int i = 0; i < SamplesPerBuffer / 10; i++)
             {
                 if (buffer[i] != 0)
                 {
@@ -87,25 +87,25 @@ namespace ZX_sharp
                 for (int c = 0; c < channels; c++)
                 {
                     // First clamp the value to the [-1.0..1.0] range
-                    float floatSample = MathHelper.Clamp(from[c, i], -1.0f, 1.0f);
+                    // float floatSample = MathHelper.Clamp(from[c, i], -1.0f, 1.0f);
 
                     // Convert it to the 16 bit [short.MinValue..short.MaxValue] range
-                    short shortSample = (short)(floatSample >= 0.0f ? floatSample * short.MaxValue : floatSample * short.MinValue * -1);
+                    // short shortSample = (short)(floatSample >= 0.0f ? floatSample * short.MaxValue : floatSample * short.MinValue * -1);
 
                     // Calculate the right index based on the PCM format of interleaved samples per channel [L-R-L-R]
                     int index = i * channels * bytesPerSample + c * bytesPerSample;
 
                     // Store the 16 bit sample as two consecutive 8 bit values in the buffer with regard to endian-ness
-                    if (!BitConverter.IsLittleEndian)
-                    {
-                        to[index] = (byte)(shortSample >> 8);
-                        to[index + 1] = (byte)shortSample;
-                    }
-                    else
-                    {
-                        to[index] = (byte)shortSample;
-                        to[index + 1] = (byte)(shortSample >> 8);
-                    }
+                    //if (!BitConverter.IsLittleEndian)
+                    //{
+                    //    to[index] = (byte)(shortSample >> 8);
+                    //    to[index + 1] = (byte)shortSample;
+                    //}
+                    //else
+                    //{
+                    //    to[index] = (byte)shortSample;
+                    //    to[index + 1] = (byte)(shortSample >> 8);
+                    //}
                 }
             }
         }
