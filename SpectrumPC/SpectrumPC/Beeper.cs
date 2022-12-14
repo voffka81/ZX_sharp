@@ -1,14 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Speccy
+﻿namespace Speccy
 {
     public class Beeper
     {
-        public float[] AudioSamples { get; private set; }
+        public byte[] AudioSamples { get; private set; }
         public bool LastEarBit { get; set; }
         public long cpuTacts;
         public int NextSampleIndex { get; private set; }
@@ -22,7 +16,7 @@ namespace Speccy
         {
             LastSampleTact = 0;
             NextSampleIndex = 0;
-            AudioSamples = new float[100];
+            AudioSamples = new byte[1250];
         }
 
         public void ProcessEarBitValue(bool fromTape, bool earBit)
@@ -39,12 +33,12 @@ namespace Speccy
             }
             LastEarBit = earBit;
             CreateSamples();
-            
+
         }
         int LastSampleTact = 0;
         private long _frameBegins;
-        int _frameTacts = 1000;
-        int _tactsPerSample = 100;
+        int _frameTacts = 1250;
+        int _tactsPerSample = 80;
 
         public void Reset()
         {
@@ -62,7 +56,7 @@ namespace Speccy
             }
             while (nextSampleOffset < cpuTacts)
             {
-                AudioSamples[NextSampleIndex++] = LastEarBit ? 1.0f : 0.0f;
+                AudioSamples[NextSampleIndex++] = LastEarBit ? (byte)0xFF : (byte)0;
                 nextSampleOffset += _tactsPerSample;
             }
             LastSampleTact = nextSampleOffset;

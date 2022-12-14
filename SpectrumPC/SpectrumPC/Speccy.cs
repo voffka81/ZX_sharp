@@ -1,6 +1,5 @@
 ﻿using Speccy.Filetypes;
 using Speccy.Z80_CPU;
-using System;
 
 namespace Speccy
 {
@@ -23,7 +22,7 @@ namespace Speccy
 
         public bool ComputerRunning;
 
-        public float[] AudioSamples { get; private set; }
+        public byte[] AudioSamples { get; private set; }
 
         public Computer()
         {
