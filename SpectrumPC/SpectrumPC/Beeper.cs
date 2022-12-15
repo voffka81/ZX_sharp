@@ -2,21 +2,26 @@
 {
     public class Beeper
     {
-        public byte[] AudioSamples { get; private set; }
+        public float[] AudioSamples { get; private set; }
         public bool LastEarBit { get; set; }
         public long cpuTacts;
         public int NextSampleIndex { get; private set; }
+        int LastSampleTact = 0;
+        private long _frameBegins;
+        int _frameTacts = 699;
+        int _tactsPerSample = 100;
 
         public Beeper()
         {
             Initialize();
+
         }
 
         public void Initialize()
         {
             LastSampleTact = 0;
             NextSampleIndex = 0;
-            AudioSamples = new byte[1250];
+            AudioSamples = new float[_frameTacts];
         }
 
         public void ProcessEarBitValue(bool fromTape, bool earBit)
@@ -35,10 +40,7 @@
             CreateSamples();
 
         }
-        int LastSampleTact = 0;
-        private long _frameBegins;
-        int _frameTacts = 1250;
-        int _tactsPerSample = 80;
+
 
         public void Reset()
         {
@@ -50,13 +52,15 @@
         private void CreateSamples()
         {
             var nextSampleOffset = LastSampleTact;
-            if (cpuTacts > _frameBegins + _frameTacts)
-            {
-                cpuTacts = _frameBegins + _frameTacts;
-            }
+
+            //if (cpuTacts > _frameBegins - _frameTacts)
+            //{
+            //    cpuTacts = _frameBegins - _frameTacts;
+            //}
+
             while (nextSampleOffset < cpuTacts)
             {
-                AudioSamples[NextSampleIndex++] = LastEarBit ? (byte)0xFF : (byte)0;
+                AudioSamples[NextSampleIndex++] = LastEarBit ? 1.0f : 0;
                 nextSampleOffset += _tactsPerSample;
             }
             LastSampleTact = nextSampleOffset;
