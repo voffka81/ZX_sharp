@@ -1,12 +1,14 @@
 ﻿using Microsoft.Win32;
 using Speccy;
 using System;
-using System.Threading;
+using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Forms;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using ZX_WPF.Audio;
+using ZX_WPF.Keyboard;
 
 namespace ZX_sharp
 {
@@ -18,16 +20,27 @@ namespace ZX_sharp
         private Computer _speccy;
         private DispatcherTimer _renderTimer;
         private DispatcherTimer _machineTimer;
-        private Thread _machineThread;
-        private Keys[] _keyArray;
+        private Task _keyboardListenerTask;
         private WriteableBitmap _writeableBitmap;
+        private SpectrumKeyCode[] _keyArray;
+        SoundDeviceWin32 _soundDevice;
 
         public MainWindow()
         {
             InitializeComponent();
+            _renderTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(2) };
+            _machineTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1) };
+            _keyArray = Enum.GetValues(typeof(SpectrumKeyCode)).Cast<SpectrumKeyCode>().ToArray();
+            _writeableBitmap = new WriteableBitmap(
+             (int)352,
+             (int)296,
+             96,
+             96,
+             PixelFormats.Bgr32,
+             null);
 
             _speccy = new Computer();
-
+            _soundDevice = new SoundDeviceWin32(1250);
             Initialize();
         }
 
@@ -36,35 +49,31 @@ namespace ZX_sharp
             OpenFileDialog openFileDialog = new OpenFileDialog() { Filter = "snapshots (*.z80)|*.z80" };
             if (openFileDialog.ShowDialog() == true)
                 _speccy.TapeInput(openFileDialog.FileName);
+            screenImage.Focus();
+        }
+
+        private void btnReset_Click(object sender, RoutedEventArgs e)
+        {
+            _speccy.Reset();
         }
 
         private void Initialize()
         {
-            _keyArray = Enum.GetValues(typeof(Keys)).Cast<Keys>().ToArray();
-
-            _renderTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(2) };
             _renderTimer.Tick += RenderBuffer;
             _renderTimer.Start();
 
-            _machineTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1) };
+
             _machineTimer.Tick += ExecuteMachineCycle;
             _machineTimer.Start();
 
-            _machineThread = new Thread(EmulationCycle);
-            _machineThread.Start();
-
-            _writeableBitmap = new WriteableBitmap(
-            (int)352,
-               (int)296,
-               96,
-               96,
-               PixelFormats.Bgr32,
-               null);
+            _keyboardListenerTask = Task.Run(() => { GetKeyboardInput(); });
 
             screenImage.Source = _writeableBitmap;
+
+            new AudioProcessor().StartStopSineWave(_speccy);
         }
 
-        private void EmulationCycle()
+        private void GetKeyboardInput()
         {
             while (true)
             {
@@ -73,27 +82,36 @@ namespace ZX_sharp
 
                     if (KeyboardInput.IsKeyDown(_keyArray[k]))
                     {
-                        if (_keyArray[k] == Keys.F12)
-                            _speccy.Reset();
-                        _speccy.KeyInput(Map(_keyArray[k]), true);
+                        _speccy.KeyInput(_keyArray[k], true);
                         Dispatcher.Invoke(() => { keyIndicator.Fill = System.Windows.Media.Brushes.Green; });
                     }
                 }
             }
         }
 
-        private void ExecuteMachineCycle(object sender, System.EventArgs e)
+        int s = 0;
+        private void ExecuteMachineCycle(object? sender, EventArgs e)
         {
+            //s++;
+            //if (s > 10)
+            //{
+            //    if (_speccy.AudioSamples != null)
+            //    {
+            //        _soundDevice.Play(_speccy.AudioSamples);
+            //    }
+            //    s = 0;
+            //}
             _speccy.ExecuteCycle();
             _speccy.DisplayUnit.GetDisplayBuffer();
+
             for (int k = 0; k < _keyArray.Length; k++)
             {
-                _speccy.KeyInput(Map(_keyArray[k]), false);
-                keyIndicator.Fill = System.Windows.Media.Brushes.Red;
+                _speccy.KeyInput(_keyArray[k], false);
+                keyIndicator.Fill = Brushes.Red;
             }
         }
 
-        private void RenderBuffer(object sender, System.EventArgs e)
+        private void RenderBuffer(object? sender, EventArgs e)
         {
             _writeableBitmap.Lock();
             for (var column = 0; column < Display.Width; column++)
@@ -107,11 +125,6 @@ namespace ZX_sharp
                         // Find the address of the pixel to draw.
                         pBackBuffer += row * _writeableBitmap.BackBufferStride;
                         pBackBuffer += column * 4;
-
-                        // Compute the pixel's color.
-                        int color_data = 255 << 16; // R
-                        color_data |= 128 << 8;   // G
-                        color_data |= 255 << 0;   // B
 
                         // Assign the color data to the pixel.
                         *((int*)pBackBuffer) = _speccy.DisplayUnit.pixelBuffer[column, row];
@@ -127,7 +140,7 @@ namespace ZX_sharp
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             _machineTimer.Stop();
-            _machineThread.Abort();
+            _keyboardListenerTask.Dispose();
             _renderTimer.Stop();
         }
     }
