@@ -1,5 +1,6 @@
 ﻿using Speccy.Filetypes;
 using Speccy.Z80_CPU;
+using SpectrumPC.Filetypes.ZXBox.Core.Hardware.Input;
 
 namespace Speccy
 {
@@ -19,9 +20,12 @@ namespace Speccy
         private readonly Z80CPU _z80;
         private readonly IPorts _IOdataBus;
         private readonly Beeper _beeperDevice;
-        public readonly Kempston _joystik;
+        private readonly Kempston _joystik;
+        private readonly TapePlayer _tapeDevice;
 
         public bool ComputerRunning;
+        public Kempston Joystik => _joystik;
+        public TapePlayer TapeDevice => _tapeDevice;
 
         public float[] AudioSamples { get; private set; }
 
@@ -31,8 +35,10 @@ namespace Speccy
             _beeperDevice = new Beeper();
             _joystik = new Kempston();
 
+            _tapeDevice = new TapePlayer();
+
             _displayUnit = new Display(_ram);
-            _IOdataBus = new Bus16Bit(_beeperDevice, _joystik);
+            _IOdataBus = new Bus16Bit(_beeperDevice, _joystik, _tapeDevice);
 
             _z80 = new Z80CPU(_ram, _IOdataBus);
             _z80.Reset();
@@ -57,6 +63,7 @@ namespace Speccy
             while (_z80.tstates < _z80.event_next_event)
             {
                 _beeperDevice.cpuTacts = _z80.tstates;
+                _tapeDevice.AddTStates(_z80.tstates);
                 _z80.Cycle();
             }
 
@@ -89,9 +96,23 @@ namespace Speccy
 
         public void TapeInput(string tapePath)
         {
-            var z80snap = Z80File.LoadZ80(tapePath);
-            _displayUnit.BorderColor = z80snap.BORDER;
-            _z80.ApplyZ80Snapshot(z80snap);
+            if (tapePath.ToLower().EndsWith(".tap"))
+            {
+                using (MemoryStream ms = new())
+                using (FileStream file = new(tapePath, FileMode.Open, FileAccess.Read))
+                {
+                    byte[] bytes = new byte[file.Length];
+                    file.Read(bytes, 0, (int)file.Length);
+                    ms.Write(bytes, 0, (int)file.Length);
+                    _tapeDevice.LoadTape(ms.ToArray());
+                }
+            }
+            else
+            {
+                var z80snap = Z80File.LoadZ80(tapePath);
+                _displayUnit.BorderColor = z80snap.BORDER;
+                _z80.ApplyZ80Snapshot(z80snap);
+            }
 
         }
 

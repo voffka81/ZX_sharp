@@ -46,7 +46,7 @@ namespace ZX_sharp
 
         private void btnOpenFile_Click(object sender, RoutedEventArgs e)
         {
-            OpenFileDialog openFileDialog = new OpenFileDialog() { Filter = "snapshots (*.z80)|*.z80" };
+            OpenFileDialog openFileDialog = new OpenFileDialog() { Filter = "snapshots (*.z80)|*.z80|tape file (*.tap)|*.tap" };
             if (openFileDialog.ShowDialog() == true)
                 _speccy.TapeInput(openFileDialog.FileName);
             screenImage.Focus();
@@ -56,6 +56,11 @@ namespace ZX_sharp
         {
             _speccy.Reset();
         }
+        private void btnPlayTape_Click(object sender, RoutedEventArgs e)
+        {
+            _speccy.TapeDevice.Play();
+        }
+
 
         private void Initialize()
         {
@@ -87,22 +92,12 @@ namespace ZX_sharp
                     }
                 }
 
-                _speccy._joystik.PressButtons(KeyboardInput.IsArrowKeysDown());
+                _speccy.Joystik.PressButtons(KeyboardInput.IsArrowKeysDown());
             }
         }
 
-        int s = 0;
         private void ExecuteMachineCycle(object? sender, EventArgs e)
         {
-            //s++;
-            //if (s > 10)
-            //{
-            //    if (_speccy.AudioSamples != null)
-            //    {
-            //        _soundDevice.Play(_speccy.AudioSamples);
-            //    }
-            //    s = 0;
-            //}
             _speccy.ExecuteCycle();
             _speccy.DisplayUnit.GetDisplayBuffer();
             _soundDevice.AddSoundFrame(_speccy.AudioSamples);

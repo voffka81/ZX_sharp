@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:ZX_WPF"
         mc:Ignorable="d"
-        Title="MainWindow" Width="325px" Height="290px">
+        Title="MainWindow">
     <Grid x:Name="MainGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="35"/>
@@ -14,7 +14,10 @@
         <StackPanel Orientation="Horizontal" >
             <Rectangle x:Name="keyIndicator"  Width="10" Height="10" Fill="Red" Margin="5 0 0 5"></Rectangle>
             <Button Name="btnOpenFile" Height="30" Width="70" Click="btnOpenFile_Click" Margin="5 0 0 5">Load image</Button>
-            <Button Name="btnReset" Height="30" Width="70" Click="btnReset_Click" Margin="5 0 0 5">Reset PC</Button>
+            <Button Name="btnPlayTape" Height="30" Width="70" Click="btnPlayTape_Click" Margin="5 0 0 5">Play Tape</Button>
+            
+            <Button Name="btnNothing" Height="30" Width="70" Margin="5 0 0 5">N</Button>
+            <Button Name="btnReset" Height="30" Width="70" Click="btnReset_Click" Margin="50 0 0 5">Reset PC</Button>
         </StackPanel>
         <Image Grid.Row="2" x:Name="screenImage" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ></Image>
     </Grid>
