@@ -15,6 +15,8 @@ namespace ZX_WPF.Keyboard
             Toggled = 2
         }
 
+        private static bool[] _buttons = new bool[5];
+
         [DllImport("user32.dll", CharSet = CharSet.Auto, ExactSpelling = true)]
         private static extern short GetKeyState(int keyCode);
 
@@ -36,9 +38,19 @@ namespace ZX_WPF.Keyboard
             return state;
         }
 
+        public static bool[] IsArrowKeysDown()
+        {
+            _buttons[(int)Kempston.JoystikButtons.Up] = KeyStates.Down == (GetKeyState(Keys.Up) & KeyStates.Down);
+            _buttons[(int)Kempston.JoystikButtons.Down] = KeyStates.Down == (GetKeyState(Keys.Down) & KeyStates.Down);
+            _buttons[(int)Kempston.JoystikButtons.Left] = KeyStates.Down == (GetKeyState(Keys.Left) & KeyStates.Down);
+            _buttons[(int)Kempston.JoystikButtons.Right] = KeyStates.Down == (GetKeyState(Keys.Right) & KeyStates.Down);
+            _buttons[(int)Kempston.JoystikButtons.Fire] = KeyStates.Down == (GetKeyState(Keys.LControlKey) & KeyStates.Down);
+
+            return _buttons;
+        }
+
         public static bool IsKeyDown(SpectrumKeyCode spectrumKey)
         {
-
             return KeyStates.Down == (GetKeyState(Map(spectrumKey)) & KeyStates.Down);
         }
 

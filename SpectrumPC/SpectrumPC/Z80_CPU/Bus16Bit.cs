@@ -31,18 +31,28 @@
         public bool TapeLoading = false;
 
         private Beeper _beeper;
-        public Bus16Bit(Beeper beeper)
+        private Kempston _joystick;
+
+        public Bus16Bit(Beeper beeper, Kempston joystick)
         {
             _beeper = beeper;
+            _joystick = joystick;
         }
 
-        public byte ReadByte(int address)
+        public byte ReadByte(int port)
         {
-            if ((address & 0x0001) != 0)
-                return 0xFF;
+            int result = 0xFF;
 
-            byte line = (byte)(address >> 8);
-            int result = GetKeyboardLineStatus(line);
+            byte line = (byte)(port >> 8);
+            if ((port & 0xFF) == 0xFE)
+            {
+                result = GetKeyboardLineStatus(line);
+            }
+
+            if ((port & 0xff) == 0x1f)
+            {
+                result &= _joystick.GetJoystikState(port);
+            }
 
             if (TapeLoading)
             {

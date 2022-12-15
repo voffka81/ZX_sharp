@@ -23,7 +23,7 @@ namespace ZX_sharp
         private Task _keyboardListenerTask;
         private WriteableBitmap _writeableBitmap;
         private SpectrumKeyCode[] _keyArray;
-        SoundDeviceWin32 _soundDevice;
+        BeeperProvider _soundDevice;
 
         public MainWindow()
         {
@@ -40,7 +40,7 @@ namespace ZX_sharp
              null);
 
             _speccy = new Computer();
-            _soundDevice = new SoundDeviceWin32(1250);
+            _soundDevice = new BeeperProvider();
             Initialize();
         }
 
@@ -70,7 +70,7 @@ namespace ZX_sharp
 
             screenImage.Source = _writeableBitmap;
 
-            new AudioProcessor().StartStopSineWave(_speccy);
+
         }
 
         private void GetKeyboardInput()
@@ -86,6 +86,8 @@ namespace ZX_sharp
                         Dispatcher.Invoke(() => { keyIndicator.Fill = System.Windows.Media.Brushes.Green; });
                     }
                 }
+
+                _speccy._joystik.PressButtons(KeyboardInput.IsArrowKeysDown());
             }
         }
 
@@ -103,7 +105,7 @@ namespace ZX_sharp
             //}
             _speccy.ExecuteCycle();
             _speccy.DisplayUnit.GetDisplayBuffer();
-
+            _soundDevice.AddSoundFrame(_speccy.AudioSamples);
             for (int k = 0; k < _keyArray.Length; k++)
             {
                 _speccy.KeyInput(_keyArray[k], false);

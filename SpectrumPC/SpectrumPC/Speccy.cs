@@ -19,18 +19,20 @@ namespace Speccy
         private readonly Z80CPU _z80;
         private readonly IPorts _IOdataBus;
         private readonly Beeper _beeperDevice;
+        public readonly Kempston _joystik;
 
         public bool ComputerRunning;
 
-        public byte[] AudioSamples { get; private set; }
+        public float[] AudioSamples { get; private set; }
 
         public Computer()
         {
             ComputerRunning = true;
             _beeperDevice = new Beeper();
+            _joystik = new Kempston();
 
             _displayUnit = new Display(_ram);
-            _IOdataBus = new Bus16Bit(_beeperDevice);
+            _IOdataBus = new Bus16Bit(_beeperDevice, _joystik);
 
             _z80 = new Z80CPU(_ram, _IOdataBus);
             _z80.Reset();
@@ -48,10 +50,10 @@ namespace Speccy
         }
 
         int _flashCount = 0;
-        int _soundCount = 0;
         public void ExecuteCycle()
         {
             _displayUnit.BorderColor = (_IOdataBus as Bus16Bit).BorderColor;
+            _beeperDevice.Reset();
             while (_z80.tstates < _z80.event_next_event)
             {
                 _beeperDevice.cpuTacts = _z80.tstates;
@@ -60,6 +62,7 @@ namespace Speccy
 
             _z80.tstates -= _z80.event_next_event;
             _z80.Interrupt();
+
             _flashCount++;
             if (_flashCount >= 50)
             {
@@ -68,9 +71,8 @@ namespace Speccy
                 _displayUnit.ReverseFlash();
 
             }
-            AudioSamples = _beeperDevice.AudioSamples;
-            _beeperDevice.Initialize();
 
+            AudioSamples = _beeperDevice.AudioSamples;
         }
 
 
@@ -95,6 +97,7 @@ namespace Speccy
 
         public void Reset()
         {
+            _beeperDevice.Reset();
             _z80.Reset();
         }
     }
