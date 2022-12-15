@@ -1,5 +1,9 @@
-﻿using Speccy;
+﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
+using Speccy;
 using System;
+using System.Threading.Tasks;
 
 namespace ZX_sharp
 {
@@ -9,19 +13,17 @@ namespace ZX_sharp
     public class MonoSpectrum : Game
     {
         private Computer _speccy;
-        private AudioRender _audioRender;
 
         private Texture2D pixel;
         private GraphicsDeviceManager graphics;
         private SpriteBatch spriteBatch;
 
-        public MonoSpectrum(Computer speccy)
+        public MonoSpectrum()
         {
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
 
-            _speccy = speccy;
-            _audioRender = new AudioRender();
+            _speccy = new Computer() ;
         }
 
         /// <summary>
@@ -80,7 +82,6 @@ namespace ZX_sharp
         protected override void Update(GameTime gameTime)
         {
 
-            _audioRender.SubmitBuffer(_speccy.AudioSamples);
             // if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
             //     Exit();
             KeyboardState state = Keyboard.GetState();
@@ -114,95 +115,50 @@ namespace ZX_sharp
 
         public SpectrumKeyCode Map(Keys key)
         {
-            switch (key)
+            return key switch
             {
-                case Keys.D1:
-                    return SpectrumKeyCode.N1;
-                case Keys.D2:
-                    return SpectrumKeyCode.N2;
-                case Keys.D3:
-                    return SpectrumKeyCode.N3;
-                case Keys.D4:
-                    return SpectrumKeyCode.N4;
-                case Keys.D5:
-                    return SpectrumKeyCode.N5;
-                case Keys.D6:
-                    return SpectrumKeyCode.N6;
-                case Keys.D7:
-                    return SpectrumKeyCode.N7;
-                case Keys.D8:
-                    return SpectrumKeyCode.N8;
-                case Keys.D9:
-                    return SpectrumKeyCode.N9;
-                case Keys.D0:
-                    return SpectrumKeyCode.N0;
-
-                case Keys.Q:
-                    return SpectrumKeyCode.Q;
-                case Keys.W:
-                    return SpectrumKeyCode.W;
-                case Keys.E:
-                    return SpectrumKeyCode.E;
-                case Keys.R:
-                    return SpectrumKeyCode.R;
-                case Keys.T:
-                    return SpectrumKeyCode.T;
-                case Keys.Y:
-                    return SpectrumKeyCode.Y;
-                case Keys.U:
-                    return SpectrumKeyCode.U;
-                case Keys.I:
-                    return SpectrumKeyCode.I;
-                case Keys.O:
-                    return SpectrumKeyCode.O;
-                case Keys.P:
-                    return SpectrumKeyCode.P;
-
-                case Keys.A:
-                    return SpectrumKeyCode.A;
-                case Keys.S:
-                    return SpectrumKeyCode.S;
-                case Keys.D:
-                    return SpectrumKeyCode.D;
-                case Keys.F:
-                    return SpectrumKeyCode.F;
-                case Keys.G:
-                    return SpectrumKeyCode.G;
-                case Keys.H:
-                    return SpectrumKeyCode.H;
-                case Keys.J:
-                    return SpectrumKeyCode.J;
-                case Keys.K:
-                    return SpectrumKeyCode.K;
-                case Keys.L:
-                    return SpectrumKeyCode.L;
-
-                case Keys.Z:
-                    return SpectrumKeyCode.Z;
-                case Keys.X:
-                    return SpectrumKeyCode.X;
-                case Keys.C:
-                    return SpectrumKeyCode.C;
-                case Keys.V:
-                    return SpectrumKeyCode.V;
-                case Keys.B:
-                    return SpectrumKeyCode.B;
-                case Keys.N:
-                    return SpectrumKeyCode.N;
-                case Keys.M:
-                    return SpectrumKeyCode.M;
-
-                case Keys.LeftShift:
-                    return SpectrumKeyCode.SShift;
-                case Keys.RightShift:
-                    return SpectrumKeyCode.CShift;
-                case Keys.Space:
-                    return SpectrumKeyCode.Space;
-                case Keys.Enter:
-                    return SpectrumKeyCode.Enter;
-                default:
-                    return SpectrumKeyCode.Invalid;
-            }
+                Keys.D1 => SpectrumKeyCode.N1,
+                Keys.D2 => SpectrumKeyCode.N2,
+                Keys.D3 => SpectrumKeyCode.N3,
+                Keys.D4 => SpectrumKeyCode.N4,
+                Keys.D5 => SpectrumKeyCode.N5,
+                Keys.D6 => SpectrumKeyCode.N6,
+                Keys.D7 => SpectrumKeyCode.N7,
+                Keys.D8 => SpectrumKeyCode.N8,
+                Keys.D9 => SpectrumKeyCode.N9,
+                Keys.D0 => SpectrumKeyCode.N0,
+                Keys.Q => SpectrumKeyCode.Q,
+                Keys.W => SpectrumKeyCode.W,
+                Keys.E => SpectrumKeyCode.E,
+                Keys.R => SpectrumKeyCode.R,
+                Keys.T => SpectrumKeyCode.T,
+                Keys.Y => SpectrumKeyCode.Y,
+                Keys.U => SpectrumKeyCode.U,
+                Keys.I => SpectrumKeyCode.I,
+                Keys.O => SpectrumKeyCode.O,
+                Keys.P => SpectrumKeyCode.P,
+                Keys.A => SpectrumKeyCode.A,
+                Keys.S => SpectrumKeyCode.S,
+                Keys.D => SpectrumKeyCode.D,
+                Keys.F => SpectrumKeyCode.F,
+                Keys.G => SpectrumKeyCode.G,
+                Keys.H => SpectrumKeyCode.H,
+                Keys.J => SpectrumKeyCode.J,
+                Keys.K => SpectrumKeyCode.K,
+                Keys.L => SpectrumKeyCode.L,
+                Keys.Z => SpectrumKeyCode.Z,
+                Keys.X => SpectrumKeyCode.X,
+                Keys.C => SpectrumKeyCode.C,
+                Keys.V => SpectrumKeyCode.V,
+                Keys.B => SpectrumKeyCode.B,
+                Keys.N => SpectrumKeyCode.N,
+                Keys.M => SpectrumKeyCode.M,
+                Keys.LeftShift => SpectrumKeyCode.SShift,
+                Keys.RightShift => SpectrumKeyCode.CShift,
+                Keys.Space => SpectrumKeyCode.Space,
+                Keys.Enter => SpectrumKeyCode.Enter,
+                _ => SpectrumKeyCode.Invalid,
+            };
         }
         /// <summary>
         /// This is called when the game should draw itself.
@@ -224,7 +180,8 @@ namespace ZX_sharp
             spriteBatch.End();
             base.Draw(gameTime);
         }
-        public Color ToColor(int rgb)
+       
+        private Color ToColor(int rgb)
         {
             return new Color((byte)((rgb & 0xff0000) >> 0x10),
                                   (byte)((rgb & 0xff00) >> 8),
