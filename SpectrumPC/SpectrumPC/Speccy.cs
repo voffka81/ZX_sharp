@@ -60,14 +60,14 @@ namespace Speccy
         {
             _displayUnit.BorderColor = (_IOdataBus as Bus16Bit).BorderColor;
             _beeperDevice.Reset();
-            while (_z80.tstates < _z80.event_next_event)
+            while (_z80.TicksCount < _z80.event_next_event)
             {
-                _beeperDevice.cpuTacts = _z80.tstates;
-                _tapeDevice.AddTStates(_z80.tstates);
+                _beeperDevice.cpuTacts = _z80.TicksCount;
+                _tapeDevice.AddTStates(_z80.TStateValue);
                 _z80.Cycle();
             }
 
-            _z80.tstates -= _z80.event_next_event;
+            _z80.ResetTStates();
             _z80.Interrupt();
 
             _flashCount++;

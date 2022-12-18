@@ -29,7 +29,6 @@ namespace Speccy.Z80_CPU
             return (byte)~status;
         }
 
-        int pulseLevel = 0;
         public bool TapeLoading = false;
 
         private Beeper _beeper;
@@ -51,16 +50,8 @@ namespace Speccy.Z80_CPU
             if ((port & 0xFF) == 0xFE)
             {
                 result = GetKeyboardLineStatus(line);
-            }
 
-            if ((port & 0xff) == 0x1f)
-            {
-                result &= _joystick.GetJoystikState(port);
-            }
-
-            if (_tapeDevice.IsPlaying)
-            {
-                if ((port & 0xff) == 0xfe)
+                if (_tapeDevice.IsPlaying)
                 {
                     if (firstread)
                     {
@@ -101,6 +92,13 @@ namespace Speccy.Z80_CPU
                     }
                 }
             }
+
+            if ((port & 0xff) == 0x1f)
+            {
+                result &= _joystick.GetJoystikState(port);
+            }
+
+
             var data = (byte)(result & 191);
             return data;
         }
