@@ -15,7 +15,7 @@ namespace Speccy.Z80_CPU
         private Status _Status = new Status();
 
         // Memory and IO access
-        public int tstates;
+        private int tstates;
 
         // By default fetching won't be stopped
         private int _StatementsToFetch = -1;
@@ -173,16 +173,16 @@ namespace Speccy.Z80_CPU
                 {
                     case 0:
                         _Status.PC = 0x0038;
-                        tstates += 12;
+                        IncreaseTStates(12);
                         break;
                     case 1:
                         _Status.PC = 0x0038;
-                        tstates += 13;
+                        IncreaseTStates(13);
                         break;
                     case 2:
                         ushort InterruptTableAddress = (ushort)((_Status.I << 8) | 0xFF);
                         _Status.PC = _memory.ReadWord(InterruptTableAddress);
-                        tstates += 19;
+                        IncreaseTStates(19);
                         break;
                     default:
                         Console.Error.WriteLine("Unknown interrupt mode {0}\n", _Status.IM);
@@ -648,7 +648,7 @@ namespace Speccy.Z80_CPU
         /// <param name="tempaddr"></param>
         private void DDFDCB_ROTATESHIFT(byte time, byte target, instruction instruction, ushort tempaddr)
         {
-            tstates += time;
+            IncreaseTStates(time);
             target = _memory.ReadByte(tempaddr);
             instruction(target);
             _memory.WriteByte(tempaddr, target);
@@ -697,7 +697,7 @@ namespace Speccy.Z80_CPU
             _Status.HL--;
             if ((_Status.F & (FlagRegisterDefinition.V | FlagRegisterDefinition.Z)) == FlagRegisterDefinition.V)
             {
-                tstates += 5;
+                IncreaseTStates(5);
                 _Status.PC -= 2;
             }
         }
@@ -747,7 +747,7 @@ namespace Speccy.Z80_CPU
             _Status.HL++;
             if ((_Status.F & (FlagRegisterDefinition.V | FlagRegisterDefinition.Z)) == FlagRegisterDefinition.V)
             {
-                tstates += 5;
+                IncreaseTStates(5);
                 _Status.PC -= 2;
             }
         }
@@ -942,7 +942,7 @@ namespace Speccy.Z80_CPU
             _Status.HL--;
             if (_Status.B != 0)
             {
-                tstates += 5;
+                IncreaseTStates(5);
                 _Status.PC -= 2;
             }
         }
@@ -999,7 +999,7 @@ namespace Speccy.Z80_CPU
             _Status.HL++;
             if (_Status.B != 0)
             {
-                tstates += 5;
+                IncreaseTStates(5);
                 _Status.PC -= 2;
             }
         }
@@ -1079,7 +1079,7 @@ namespace Speccy.Z80_CPU
             _Status.DE--;
             if (_Status.BC != 0)
             {
-                tstates += 4;
+                IncreaseTStates(4);
                 _Status.PC -= 2;
             }
 
@@ -1133,7 +1133,7 @@ namespace Speccy.Z80_CPU
             _Status.HL++;
             if (_Status.BC != 0)
             {
-                tstates += 5;
+                IncreaseTStates(5);
                 _Status.PC -= 2;
             }
         }
@@ -1285,7 +1285,7 @@ namespace Speccy.Z80_CPU
             _Status.HL--;
             if (_Status.B != 0)
             {
-                tstates += 5;
+                IncreaseTStates(5);
                 _Status.PC -= 2;
             }
         }
@@ -1345,7 +1345,7 @@ namespace Speccy.Z80_CPU
             _Status.HL++;
             if (_Status.B != 0)
             {
-                tstates += 5;
+                IncreaseTStates(5);
                 _Status.PC -= 2;
             }
         }
@@ -1877,8 +1877,8 @@ namespace Speccy.Z80_CPU
                 // If the z80 is HALTed, execute a NOP-equivalent and loop again
                 if (_Status.Halted)
                 {
-                    tstates += 4;
-                    //continue;
+                    IncreaseTStates(4);
+                    return;
                 }
 
                 // Fetch next instruction
@@ -1898,7 +1898,7 @@ namespace Speccy.Z80_CPU
                 {
                     // The first check is for HALT otherwise it could be
                     // interpreted as LD (HL),(HL)
-                    tstates += 4;
+                    IncreaseTStates(4);
                     _Status.Halted = true;
                 }
                 else if ((opcode & 0xC0) == 0x40)   // LD r,r
@@ -1909,19 +1909,19 @@ namespace Speccy.Z80_CPU
                     if (reg1 == null)
                     {
                         // The target is (HL)
-                        tstates += 7;
+                        IncreaseTStates(7);
                         _memory.WriteByte(_Status.HL, reg2.Value);
                     }
                     else if (reg2 == null)
                     {
                         // The source is (HL)
-                        tstates += 7;
+                        IncreaseTStates(7);
                         reg1.Value = _memory.ReadByte(_Status.HL);
                     }
                     else
                     {
                         // Source and target are normal registries
-                        tstates += 4;
+                        IncreaseTStates(4);
                         reg1.Value = reg2.Value;
                     }
                 }
@@ -1935,13 +1935,13 @@ namespace Speccy.Z80_CPU
                     if (reg == null)
                     {
                         // The source is (HL)
-                        tstates += 7;
+                        IncreaseTStates(7);
                         _Value = _memory.ReadByte(_Status.HL);
                     }
                     else
                     {
                         // The source is a normal registry
-                        tstates += 4;
+                        IncreaseTStates(4);
                         _Value = reg.Value;
                     }
 
@@ -1983,7 +1983,7 @@ namespace Speccy.Z80_CPU
                     if (reg == null)
                     {
                         // The target is (HL)
-                        tstates += 7;
+                        IncreaseTStates(7);
                         reg = new HalfRegister(_memory.ReadByte(_Status.HL));
                         INC(reg);
                         _memory.WriteByte(_Status.HL, reg.Value);
@@ -1991,7 +1991,7 @@ namespace Speccy.Z80_CPU
                     else
                     {
                         // The target is a normal registry
-                        tstates += 4;
+                        IncreaseTStates(4);
                         INC(reg);
                     }
                 }
@@ -2002,7 +2002,7 @@ namespace Speccy.Z80_CPU
                     if (reg == null)
                     {
                         // The target is (HL)
-                        tstates += 7;
+                        IncreaseTStates(7);
                         reg = new HalfRegister(_memory.ReadByte(_Status.HL));
                         DEC(reg);
                         _memory.WriteByte(_Status.HL, reg.Value);
@@ -2010,7 +2010,7 @@ namespace Speccy.Z80_CPU
                     else
                     {
                         // The target is a normal registry
-                        tstates += 4;
+                        IncreaseTStates(4);
                         DEC(reg);
                     }
                 }
@@ -2022,19 +2022,19 @@ namespace Speccy.Z80_CPU
                     if (reg == null)
                     {
                         // The target is (HL)
-                        tstates += 10;
+                        IncreaseTStates(10);
                         _memory.WriteByte(_Status.HL, Value);
                     }
                     else
                     {
                         // The target is a normal registry
-                        tstates += 7;
+                        IncreaseTStates(7);
                         reg.Value = Value;
                     }
                 }
                 else if ((opcode & 0xC7) == 0xC0) // RET cc
                 {
-                    tstates += 5;
+                    IncreaseTStates(5);
                     if (opcode == 0xC0 && Status.PC == 0x056C)
                     {
                         if (tape_load_trap() == 0)
@@ -2042,13 +2042,13 @@ namespace Speccy.Z80_CPU
                     }
                     if (CheckFlag(opcode))
                     {
-                        tstates += 6;
+                        IncreaseTStates(6);
                         RET();
                     }
                 }
                 else if ((opcode & 0xC7) == 0xC2) // JP cc,nn
                 {
-                    tstates += 10;
+                    IncreaseTStates(10);
                     if (CheckFlag(opcode))
                         JP();
                     else
@@ -2056,10 +2056,10 @@ namespace Speccy.Z80_CPU
                 }
                 else if ((opcode & 0xC7) == 0xC4) // CALL cc,nn
                 {
-                    tstates += 10;
+                    IncreaseTStates(10);
                     if (CheckFlag(opcode))
                     {
-                        tstates += 7;
+                        IncreaseTStates(7);
                         CALL();
                     }
                     else
@@ -2067,12 +2067,12 @@ namespace Speccy.Z80_CPU
                 }
                 else if ((opcode & 0xC7) == 0xC7) // RST p
                 {
-                    tstates += 11;
+                    IncreaseTStates(11);
                     RST((byte)(opcode & 0x38));
                 }
                 else if ((opcode & 0xCF) == 0x01) // LD dd,nn
                 {
-                    tstates += 10;
+                    IncreaseTStates(10);
                     Register reg = GetRegister(opcode, true);
                     ushort Value = _memory.ReadWord(Status.PC);
                     Status.PC += 2;
@@ -2081,7 +2081,7 @@ namespace Speccy.Z80_CPU
                 }
                 else if ((opcode & 0xCF) == 0x03) // INC ss
                 {
-                    tstates += 6;
+                    IncreaseTStates(6);
                     Register reg = GetRegister(opcode, true);
 
                     // No flags affected
@@ -2089,21 +2089,21 @@ namespace Speccy.Z80_CPU
                 }
                 else if ((opcode & 0xCF) == 0x09) // ADD HL,ss
                 {
-                    tstates += 11;
+                    IncreaseTStates(11);
                     Register reg = GetRegister(opcode, true);
 
                     ADD_16(_Status.RegisterHL, reg.w);
                 }
                 else if ((opcode & 0xCF) == 0x0B) // DEC ss
                 {
-                    tstates += 6;
+                    IncreaseTStates(6);
                     Register reg = GetRegister(opcode, true);
 
                     reg.w--;
                 }
                 else if ((opcode & 0xCF) == 0xC5) // PUSH qq
                 {
-                    tstates += 11;
+                    IncreaseTStates(11);
                     Register reg = GetRegister(opcode, false);
 
                     Push(reg);
@@ -2111,7 +2111,7 @@ namespace Speccy.Z80_CPU
 
                 else if ((opcode & 0xCF) == 0xC1) // POP qq
                 {
-                    tstates += 10;
+                    IncreaseTStates(10);
                     Register reg = GetRegister(opcode, false);
 
                     Pop(reg);
@@ -2121,18 +2121,18 @@ namespace Speccy.Z80_CPU
                     switch (opcode)
                     {
                         case 0x00:      // NOP
-                            tstates += 4;
+                            IncreaseTStates(4);
                             break;
                         case 0x02:      // LD (BC),A
-                            tstates += 7;
+                            IncreaseTStates(7);
                             _memory.WriteByte(_Status.BC, _Status.A);
                             break;
                         case 0x07:      // RLCA
-                            tstates += 4;
+                            IncreaseTStates(4);
                             RLCA();
                             break;
                         case 0x08:      // EX AF,AF'
-                            tstates += 4;
+                            IncreaseTStates(4);
                             // The 2-byte contents of the register pairs AF and AF are exchanged.
                             // Register pair AF consists of registers A' and F'.
 
@@ -2146,127 +2146,127 @@ namespace Speccy.Z80_CPU
                             _Status.RegisterAF.Swap(_Status.RegisterAF_);
                             break;
                         case 0x0A:      // LD A,(BC)
-                            tstates += 7;
+                            IncreaseTStates(7);
                             _Status.A = _memory.ReadByte(_Status.BC);
                             break;
 
                         case 0x0F:      // RRCA
-                            tstates += 4;
+                            IncreaseTStates(4);
                             RRCA();
                             break;
                         case 0x10:      // DJNZ offset
-                            tstates += 8;
+                            IncreaseTStates(8);
                             _Status.B--;
                             if (_Status.B != 0)
                             {
-                                tstates += 5;
+                                IncreaseTStates(5);
                                 JR();
                             }
                             _Status.PC++;
                             break;
                         case 0x12:      // LD (DE),A
-                            tstates += 7;
+                            IncreaseTStates(7);
                             _memory.WriteByte(_Status.DE, _Status.A);
                             break;
                         case 0x17:      // RLA
-                            tstates += 4;
+                            IncreaseTStates(4);
                             RLA();
                             break;
                         case 0x18:      // JR offset
-                            tstates += 12;
+                            IncreaseTStates(12);
                             JR();
                             _Status.PC++;
                             break;
                         case 0x1A:      // LD A,(DE)
-                            tstates += 7;
+                            IncreaseTStates(7);
                             _Status.A = _memory.ReadByte(_Status.DE);
                             break;
                         case 0x1F:      // RRA
-                            tstates += 4;
+                            IncreaseTStates(4);
                             RRA();
                             break;
                         case 0x20:      // JR NZ,offset
-                            tstates += 7;
+                            IncreaseTStates(7);
                             if ((_Status.F & FlagRegisterDefinition.Z) == 0)
                             {
-                                tstates += 5;
+                                IncreaseTStates(5);
                                 JR();
                             }
                             _Status.PC++;
                             break;
                         case 0x22:      // LD (nnnn),HL
-                            tstates += 16;
+                            IncreaseTStates(16);
                             LD_nndd(_Status.RegisterHL);
                             break;
                         case 0x27:      // DAA
-                            tstates += 4;
+                            IncreaseTStates(4);
                             DAA();
                             break;
                         case 0x28:      // JR Z,offset
-                            tstates += 7;
+                            IncreaseTStates(7);
                             if ((_Status.F & FlagRegisterDefinition.Z) != 0)
                             {
-                                tstates += 5;
+                                IncreaseTStates(5);
                                 JR();
                             }
                             _Status.PC++;
                             break;
                         case 0x2A:      // LD HL,(nnnn)
-                            tstates += 16;
+                            IncreaseTStates(16);
                             LD_ddnn(_Status.RegisterHL);
                             break;
                         case 0x2F:      // CPL
-                            tstates += 4;
+                            IncreaseTStates(4);
                             CPL();
                             break;
                         case 0x30:      // JR NC,offset
-                            tstates += 7;
+                            IncreaseTStates(7);
                             if ((_Status.F & FlagRegisterDefinition.C) == 0)
                             {
-                                tstates += 5;
+                                IncreaseTStates(5);
                                 JR();
                             }
                             _Status.PC++;
                             break;
                         case 0x32:      // LD (nnnn),A
-                            tstates += 13;
+                            IncreaseTStates(13);
                             Address = _memory.ReadWord(_Status.PC);
                             _Status.PC += 2;
                             _memory.WriteByte(Address, _Status.A);
                             break;
                         case 0x37:      // SCF
-                            tstates += 4;
+                            IncreaseTStates(4);
                             _Status.F |= FlagRegisterDefinition.C;
                             break;
                         case 0x38:      // JR C,offset
-                            tstates += 7;
+                            IncreaseTStates(7);
                             if ((_Status.F & FlagRegisterDefinition.C) != 0)
                             {
-                                tstates += 5;
+                                IncreaseTStates(5);
                                 JR();
                             }
                             _Status.PC++;
                             break;
                         case 0x3A:      // LD A,(nnnn)
-                            tstates += 13;
+                            IncreaseTStates(13);
                             Address = _memory.ReadWord(_Status.PC);
                             _Status.PC += 2;
                             _Status.A = _memory.ReadByte(Address);
                             break;
                         case 0x3F:      // CCF
-                            tstates += 4;
+                            IncreaseTStates(4);
                             CCF();
                             break;
                         case 0xC3:      // JP nnnn
-                            tstates += 10;
+                            IncreaseTStates(10);
                             JP();
                             break;
                         case 0xC6:      // ADD A,nn
-                            tstates += 7;
+                            IncreaseTStates(7);
                             ADD_A(_memory.ReadByte(_Status.PC++));
                             break;
                         case 0xC9:      // RET
-                            tstates += 10;
+                            IncreaseTStates(10);
                             RET();
                             break;
                         case 0xCB:      // CBxx opcodes
@@ -2274,15 +2274,15 @@ namespace Speccy.Z80_CPU
                             Execute_CB(_memory.ReadByte(_Status.PC++));
                             break;
                         case 0xCD:      // CALL nnnn
-                            tstates += 17;
+                            IncreaseTStates(17);
                             CALL();
                             break;
                         case 0xCE:      // ADC A,nn
-                            tstates += 7;
+                            IncreaseTStates(7);
                             ADC_A(_memory.ReadByte(_Status.PC++));
                             break;
                         case 0xD3:      // OUT (nn),A
-                            tstates += 11;
+                            IncreaseTStates(11);
                             // The operand n is placed on the bottom half (A0 through A7) of the address
                             // bus to select the I/O device at one of 256 possible ports. The contents of the
                             // Accumulator (register A) also appear on the top half (A8 through A15) of
@@ -2291,11 +2291,11 @@ namespace Speccy.Z80_CPU
                             _io.WriteByte((ushort)(_memory.ReadByte(_Status.PC++) | (_Status.A << 8)), _Status.A);
                             break;
                         case 0xD6:      // SUB nn
-                            tstates += 7;
+                            IncreaseTStates(7);
                             SUB(_memory.ReadByte(_Status.PC++));
                             break;
                         case 0xD9:      // EXX
-                            tstates += 4;
+                            IncreaseTStates(4);
                             // Each 2-byte value in register pairs BC, DE, and HL is exchanged with the
                             // 2-byte value in BC', DE', and HL', respectively.
 
@@ -2304,7 +2304,7 @@ namespace Speccy.Z80_CPU
                             _Status.RegisterHL.Swap(Status.RegisterHL_);
                             break;
                         case 0xDB:      // IN A,(nn)
-                            tstates += 11;
+                            IncreaseTStates(11);
                             // The operand n is placed on the bottom half (A0 through A7) of the address
                             // bus to select the I/O device at one of 256 possible ports. The contents of the
                             // Accumulator also appear on the top half (A8 through A15) of the address
@@ -2320,11 +2320,11 @@ namespace Speccy.Z80_CPU
                             Execute_DDFD(_Status.RegisterIX, _memory.ReadByte(_Status.PC++));
                             break;
                         case 0xDE:      // SBC A,nn
-                            tstates += 4;
+                            IncreaseTStates(4);
                             SBC_A(_memory.ReadByte(_Status.PC++));
                             break;
                         case 0xE3:      // EX (SP),HL
-                            tstates += 19;
+                            IncreaseTStates(19);
                             {
                                 ushort _w = _memory.ReadWord(_Status.SP);
                                 _memory.WriteWord(_Status.SP, _Status.HL);
@@ -2332,15 +2332,15 @@ namespace Speccy.Z80_CPU
                             }
                             break;
                         case 0xE6:      // AND nn
-                            tstates += 7;
+                            IncreaseTStates(7);
                             AND_A(_memory.ReadByte(_Status.PC++));
                             break;
                         case 0xE9:      // JP HL
-                            tstates += 4;
+                            IncreaseTStates(4);
                             _Status.PC = _Status.HL;
                             break;
                         case 0xEB:      // EX DE,HL
-                            tstates += 4;
+                            IncreaseTStates(4);
                             _Status.RegisterDE.Swap(_Status.RegisterHL);
                             break;
 
@@ -2350,11 +2350,11 @@ namespace Speccy.Z80_CPU
                             Execute_ED(_memory.ReadByte(_Status.PC++));
                             break;
                         case 0xEE:      // XOR A,nn
-                            tstates += 7;
+                            IncreaseTStates(7);
                             XOR(_memory.ReadByte(_Status.PC++));
                             break;
                         case 0xF3:      // DI
-                            tstates += 4;
+                            IncreaseTStates(4);
                             // DI disables the maskable interrupt by resetting the interrupt enable flip-flops
                             // (IFF1 and IFF2). Note that this instruction disables the maskable
                             // interrupt during its execution.
@@ -2362,15 +2362,15 @@ namespace Speccy.Z80_CPU
                             _Status.IFF2 = false;
                             break;
                         case 0xF6:      // OR nn
-                            tstates += 7;
+                            IncreaseTStates(7);
                             OR(_memory.ReadByte(_Status.PC++));
                             break;
                         case 0xF9:      // LD SP,HL
-                            tstates += 6;
+                            IncreaseTStates(6);
                             _Status.SP = _Status.HL;
                             break;
                         case 0xFB:      // EI
-                            tstates += 4;
+                            IncreaseTStates(4);
                             // The enable interrupt instruction sets both interrupt enable flip flops (IFF1
                             // and IFF2) to a logic 1, allowing recognition of any maskable interrupt. Note
                             // that during the execution of this instruction and the following instruction,
@@ -2383,7 +2383,7 @@ namespace Speccy.Z80_CPU
                             Execute_DDFD(_Status.RegisterIY, _memory.ReadByte(_Status.PC++));
                             break;
                         case 0xFE:      // CP nn
-                            tstates += 7;
+                            IncreaseTStates(7);
                             CP(_memory.ReadByte(_Status.PC++));
                             break;
                         default:
@@ -2509,7 +2509,7 @@ namespace Speccy.Z80_CPU
             {
                 // The first check is for HALT otherwise it could be
                 // interpreted as LD (I_ + d),(I_ + d)
-                tstates += 4;
+                IncreaseTStates(4);
                 _Status.Halted = true;
             }
             else if ((opcode & 0xC0) == 0x40)   // LD r,r'
@@ -2520,14 +2520,14 @@ namespace Speccy.Z80_CPU
                 if (reg1 == null)
                 {
                     // The target is (I_ + d)
-                    tstates += 19;
+                    IncreaseTStates(19);
                     Address = (ushort)(RegisterI_.w + (sbyte)_memory.ReadByte(_Status.PC++));
                     _memory.WriteByte(Address, reg2.Value);
                 }
                 else if (reg2 == null)
                 {
                     // The source is (I_ + d)
-                    tstates += 19;
+                    IncreaseTStates(19);
                     Address = (ushort)(RegisterI_.w + (sbyte)_memory.ReadByte(_Status.PC++));
                     reg1.Value = _memory.ReadByte(Address);
                 }
@@ -2544,7 +2544,7 @@ namespace Speccy.Z80_CPU
                     if (reg2 == Status.RegisterHL.l)
                         reg2 = RegisterI_.l;
 
-                    tstates += 8;
+                    IncreaseTStates(8);
                     reg1.Value = reg2.Value;
                 }
             }
@@ -2558,13 +2558,13 @@ namespace Speccy.Z80_CPU
                 if (reg == null)
                 {
                     // The source is (I_ + d)
-                    tstates += 19;
+                    IncreaseTStates(19);
                     _Value = _memory.ReadByte((ushort)(RegisterI_.w + (sbyte)_memory.ReadByte(_Status.PC++)));
                 }
                 else
                 {
                     // The source is a normal registry but HL is substituted by I_
-                    tstates += 8;
+                    IncreaseTStates(8);
                     if (reg == _Status.RegisterHL.h)
                         _Value = RegisterI_.h.Value;
                     else if (reg == _Status.RegisterHL.l)
@@ -2610,78 +2610,78 @@ namespace Speccy.Z80_CPU
                 switch (opcode)
                 {
                     case 0x09:      // ADD I_,BC
-                        tstates += 15;
+                        IncreaseTStates(15);
                         ADD_16(RegisterI_, _Status.BC);
                         break;
 
                     case 0x19:      // ADD I_,DE
-                        tstates += 15;
+                        IncreaseTStates(15);
                         ADD_16(RegisterI_, _Status.DE);
                         break;
 
                     case 0x21:      // LD I_,nnnn
-                        tstates += 14;
+                        IncreaseTStates(14);
                         RegisterI_.w = _memory.ReadWord(_Status.PC);
                         _Status.PC += 2;
                         break;
 
                     case 0x22:      // LD (nnnn),I_
-                        tstates += 20;
+                        IncreaseTStates(20);
                         LD_nndd(RegisterI_);
                         break;
 
                     case 0x23:      // INC I_
-                        tstates += 10;
+                        IncreaseTStates(10);
                         RegisterI_.w++;
                         break;
 
                     case 0x24:      // INC I_.h
-                        tstates += 8;
+                        IncreaseTStates(8);
                         INC(RegisterI_.h);
                         break;
 
                     case 0x25:      // DEC I_.h
-                        tstates += 8;
+                        IncreaseTStates(8);
                         DEC(RegisterI_.h);
                         break;
 
                     case 0x26:      // LD I_.h,nn
-                        tstates += 11;
+                        IncreaseTStates(11);
                         RegisterI_.h.Value = _memory.ReadByte(_Status.PC++);
                         break;
 
                     case 0x29:      // ADD I_,I_
-                        tstates += 15;
+                        IncreaseTStates(15);
                         ADD_16(RegisterI_, RegisterI_.w);
                         break;
 
                     case 0x2A:      // LD I_,(nnnn)
-                        tstates += 20;
+                        IncreaseTStates(20);
                         LD_ddnn(RegisterI_);
                         break;
 
                     case 0x2B:      // DEC I_
-                        tstates += 10;
+                        IncreaseTStates(10);
                         RegisterI_.w--;
                         break;
 
                     case 0x2C:      // INC I_.l
-                        tstates += 8;
+                        IncreaseTStates(8);
                         INC(RegisterI_.l);
                         break;
 
                     case 0x2D:      // DEC I_.l
-                        tstates += 8;
+                        IncreaseTStates(8);
                         DEC(RegisterI_.l);
                         break;
 
                     case 0x2E:      // LD I_.l,nn
-                        tstates += 11;
+                        IncreaseTStates(11);
                         RegisterI_.l.Value = _memory.ReadByte(_Status.PC++);
                         break;
 
                     case 0x34:      // INC (I_ + d)
-                        tstates += 23;
+                        IncreaseTStates(23);
                         Address = (ushort)(RegisterI_.w + (sbyte)_memory.ReadByte(_Status.PC++));
                         _I__ = new HalfRegister(_memory.ReadByte(Address));
                         INC(_I__);
@@ -2689,7 +2689,7 @@ namespace Speccy.Z80_CPU
                         break;
 
                     case 0x35:      // DEC (I_ + d)
-                        tstates += 23;
+                        IncreaseTStates(23);
                         Address = (ushort)(RegisterI_.w + (sbyte)_memory.ReadByte(_Status.PC++));
                         _I__ = new HalfRegister(_memory.ReadByte(Address));
                         INC(_I__);
@@ -2697,13 +2697,13 @@ namespace Speccy.Z80_CPU
                         break;
 
                     case 0x36:      // LD (I_ + d),nn
-                        tstates += 19;
+                        IncreaseTStates(19);
                         Address = (ushort)(RegisterI_.w + (sbyte)_memory.ReadByte(_Status.PC++));
                         _memory.WriteByte(Address, _memory.ReadByte(_Status.PC++));
                         break;
 
                     case 0x39:      // ADD I_,SP
-                        tstates += 15;
+                        IncreaseTStates(15);
                         ADD_16(RegisterI_, Status.SP);
                         break;
 
@@ -2717,12 +2717,12 @@ namespace Speccy.Z80_CPU
                         }
                         break;
                     case 0xE1:      // POP I_
-                        tstates += 14;
+                        IncreaseTStates(14);
                         Pop(RegisterI_);
                         break;
 
                     case 0xE3:      // EX (SP),I_
-                        tstates += 23;
+                        IncreaseTStates(23);
                         {
                             ushort _w = _memory.ReadWord(_Status.SP);
                             _memory.WriteWord(_Status.SP, RegisterI_.w);
@@ -2730,12 +2730,12 @@ namespace Speccy.Z80_CPU
                         }
                         break;
                     case 0xE5:      // PUSH I_
-                        tstates += 15;
+                        IncreaseTStates(15);
                         Push(RegisterI_);
                         break;
 
                     case 0xE9:      // JP I_
-                        tstates += 8;
+                        IncreaseTStates(8);
                         _Status.PC = RegisterI_.w;
                         break;
 
@@ -2746,13 +2746,13 @@ namespace Speccy.Z80_CPU
                     // at only 4 T states).
 
                     case 0xF9:      // LD SP,I_
-                        tstates += 10;
+                        IncreaseTStates(10);
                         _Status.SP = RegisterI_.w;
                         break;
 
                     default:
                         // Instruction did not involve H or L, so backtrack one instruction and parse again
-                        tstates += 4;
+                        IncreaseTStates(4);
                         _Status.PC--;
                         break;
 
@@ -2777,7 +2777,7 @@ namespace Speccy.Z80_CPU
                 if (reg == null)
                     reg = new HalfRegister();
 
-                tstates += 12;
+                IncreaseTStates(12);
                 IN(reg, _Status.BC);
             }
             else if ((opcode & 0xC7) == 0x41) // OUT (C),r
@@ -2793,12 +2793,12 @@ namespace Speccy.Z80_CPU
                 if (reg == null)
                     reg = new HalfRegister(0);
 
-                tstates += 12;
+                IncreaseTStates(12);
                 _io.WriteByte(_Status.BC, reg.Value);
             }
             else if ((opcode & 0xC7) == 0x42) // ALU operations with HL
             {
-                tstates += 15;
+                IncreaseTStates(15);
                 Register reg = GetRegister(opcode, true);
                 switch (opcode & 0x08)
                 {
@@ -2814,7 +2814,7 @@ namespace Speccy.Z80_CPU
             }
             else if ((opcode & 0xC7) == 0x43) // Load register from to memory address
             {
-                tstates += 20;
+                IncreaseTStates(20);
                 Register reg = GetRegister(opcode, true);
                 switch (opcode & 0x08)
                 {
@@ -2854,7 +2854,7 @@ namespace Speccy.Z80_CPU
                                 // P/V is set if Accumulator was 80H before operation; reset otherwise
                                 // N is set
                                 // C is set if Accumulator was not 00H before operation; reset otherwise
-                        tstates += 8;
+                        IncreaseTStates(8);
                         {
                             byte _b = _Status.A;
                             _Status.A = 0;
@@ -2889,7 +2889,7 @@ namespace Speccy.Z80_CPU
                                     // the RET instruction). The state of IFF2 is copied back to IFF1 so that
                                     // maskable interrupts are enabled immediately following the RETN if they
                                     // were enabled before the nonmaskable interrupt.
-                        tstates += 14;
+                        IncreaseTStates(14);
                         _Status.IFF1 = _Status.IFF2;
                         RET();
                         break;
@@ -2903,29 +2903,29 @@ namespace Speccy.Z80_CPU
                                 // CPU. The first byte of a multi-byte instruction is read during the interrupt
                                 // acknowledge cycle. Subsequent bytes are read in by a normal memory
                                 // read sequence.
-                        tstates += 8;
+                        IncreaseTStates(8);
                         _Status.IM = 0;
                         break;
 
                     case 0x47:  // LD I,A
-                        tstates += 9;
+                        IncreaseTStates(9);
                         _Status.I = _Status.A;
                         break;
 
                     case 0x4F:  // LD R,A
-                        tstates += 9;
+                        IncreaseTStates(9);
                         _Status.R = _Status.R7 = _Status.A;
                         break;
 
                     case 0x56:
                     case 0x76:  // IM 1
-                        tstates += 8;
+                        IncreaseTStates(8);
                         // The IM 1 instruction sets interrupt mode 1. In this mode, the processor
                         // responds to an interrupt by executing a restart to location 0038H.
                         _Status.IM = 1;
                         break;
                     case 0x57:  // LD A,I
-                        tstates += 9;
+                        IncreaseTStates(9);
                         // The contents of the Interrupt Vector Register I are loaded to the Accumulator.
                         // Condition Bits Affected:
                         // S is set if I-Register is negative; reset otherwise
@@ -2947,104 +2947,104 @@ namespace Speccy.Z80_CPU
                                 // of the indirect pointer, while the I register in the CPU provides the most-significant
                                 // eight bits. This address points to an address in a vector table that
                                 // is the starting address for the interrupt service routine.
-                        tstates += 8;
+                        IncreaseTStates(8);
                         _Status.IM = 2;
                         break;
 
                     case 0x5F:  // LD A,R
-                        tstates += 9;
+                        IncreaseTStates(9);
                         _Status.A = (byte)((_Status.R & 0x7F) | (_Status.R7 & 0x80));
                         _Status.F = (byte)((_Status.F & FlagRegisterDefinition.C) | LookupTable_sz53[_Status.A] | (_Status.IFF2 ? FlagRegisterDefinition.V : (byte)0));
                         break;
 
                     case 0x67:  // RRD
-                        tstates += 18;
+                        IncreaseTStates(18);
                         RRD();
                         break;
                     case 0x6F:  // RLD
-                        tstates += 18;
+                        IncreaseTStates(18);
                         RLD();
                         break;
                     case 0xA0:  // LDI
-                        tstates += 16;
+                        IncreaseTStates(16);
                         LDI();
                         break;
                     case 0xA1:  // CPI
-                        tstates += 16;
+                        IncreaseTStates(16);
                         CPI();
                         break;
 
                     case 0xA2:  // INI
-                        tstates += 16;
+                        IncreaseTStates(16);
                         INI();
                         break;
 
                     case 0xA3:  // OUTI
-                        tstates += 16;
+                        IncreaseTStates(16);
                         OUTI();
                         break;
 
                     case 0xA8:  // LDD
-                        tstates += 16;
+                        IncreaseTStates(16);
                         LDD();
                         break;
 
                     case 0xA9:  // CPD
-                        tstates += 16;
+                        IncreaseTStates(16);
                         CPD();
                         break;
                     case 0xAA:  // IND
-                        tstates += 16;
+                        IncreaseTStates(16);
                         IND();
                         break;
 
                     case 0xAB:  // OUTD
-                        tstates += 16;
+                        IncreaseTStates(16);
                         OUTD();
                         break;
 
                     case 0xB0:  // LDIR
-                        tstates += 16;
+                        IncreaseTStates(16);
                         LDIR();
                         break;
 
                     case 0xB1:  // CPIR
-                        tstates += 16;
+                        IncreaseTStates(16);
                         CPIR();
                         break;
 
                     case 0xB2:  // INIR
-                        tstates += 16;
+                        IncreaseTStates(16);
                         INIR();
                         break;
 
                     case 0xB3:  // OTIR
-                        tstates += 16;
+                        IncreaseTStates(16);
                         OTIR();
                         break;
 
                     case 0xB8:  // LDDR
-                        tstates += 17;
+                        IncreaseTStates(17);
                         LDDR();
                         break;
 
                     case 0xB9:  // CPDR
-                        tstates += 16;
+                        IncreaseTStates(16);
                         CPDR();
                         break;
 
                     case 0xba:  // INDR
-                        tstates += 16;
+                        IncreaseTStates(16);
                         INDR();
                         break;
 
                     case 0xbb:  // OTDR
-                        tstates += 16;
+                        IncreaseTStates(16);
                         OTDR();
                         break;
 
                     default:    // All other opcodes are NOPD
-                        tstates += 8;
+                        IncreaseTStates(8);
                         break;
 
                 }
@@ -3075,13 +3075,13 @@ namespace Speccy.Z80_CPU
             if (reg == _HL_)
             {
                 // The target is (HL)
-                tstates += 15;
+                IncreaseTStates(15);
                 _memory.WriteByte(_Status.HL, _HL_.Value); //We should not do this when we check bits (BIT n,r)!
             }
             else
             {
                 // The source is a normal registry
-                tstates += 8;
+                IncreaseTStates(8);
             }
 
 
@@ -3116,7 +3116,7 @@ namespace Speccy.Z80_CPU
             if (opcode >> 6 == 0x01)
             {
                 reg = new HalfRegister();
-                tstates += 20;
+                IncreaseTStates(20);
             }
             else
             {
@@ -3127,11 +3127,11 @@ namespace Speccy.Z80_CPU
                 // but only on memory
                 if (reg == null)
                 {
-                    tstates += 23;
+                    IncreaseTStates(23);
                     reg = new HalfRegister();
                 }
                 else
-                    tstates += 23;
+                    IncreaseTStates(23);
                 // In case reg is not null the timings are not documented. I think the operation 
                 // take at least 23 tstates (the same of the operation without storing the 
                 // result in register too).
@@ -3218,8 +3218,19 @@ namespace Speccy.Z80_CPU
         public int event_next_event = 69888;
         int tape_load_trap() { return 0; }
         int tape_save_trap() { return 0; }
-
+        public int TStateValue { get; private set; }
 
         #endregion
+
+        public void ResetTStates()
+        {
+            tstates -= event_next_event;
+        }
+
+        private void IncreaseTStates(int value)
+        {
+            tstates += value;
+            TStateValue = value;
+        }
     }
 }
