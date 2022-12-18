@@ -14,7 +14,7 @@ namespace ZX_WPF.Audio
         /// <summary>
         /// The AudioPlaybackEngine sample rate
         /// </summary>
-        private int SampleRate = 44100;// 35000; 
+        private int SampleRate = 44100;
         /// <summary>
         /// Stereo Output
         /// </summary>

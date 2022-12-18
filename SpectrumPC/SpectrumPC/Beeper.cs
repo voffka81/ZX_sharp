@@ -53,10 +53,10 @@
         {
             var nextSampleOffset = LastSampleTact;
 
-            //if (cpuTacts > _frameBegins - _frameTacts)
-            //{
-            //    cpuTacts = _frameBegins - _frameTacts;
-            //}
+            if (cpuTacts > _frameBegins - _frameTacts)
+            {
+                cpuTacts = _frameBegins - _frameTacts;
+            }
 
             while (nextSampleOffset < cpuTacts)
             {

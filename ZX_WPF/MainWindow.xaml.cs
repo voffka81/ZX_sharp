@@ -46,7 +46,7 @@ namespace ZX_sharp
 
         private void btnOpenFile_Click(object sender, RoutedEventArgs e)
         {
-            OpenFileDialog openFileDialog = new OpenFileDialog() { Filter = "snapshots (*.z80)|*.z80|tape file (*.tap)|*.tap" };
+            OpenFileDialog openFileDialog = new OpenFileDialog() { Filter = "All supported files|*.z80;*.tap;|*.tap snapshots (*.z80)|*.z80|tape file (*.tap)|*.tap" };
             if (openFileDialog.ShowDialog() == true)
                 _speccy.TapeInput(openFileDialog.FileName);
             screenImage.Focus();

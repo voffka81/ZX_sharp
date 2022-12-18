@@ -81,7 +81,7 @@ namespace Speccy.Z80_CPU
                     }
 
                     ear = _tapeDevice.EarValues[tapeposition];
-                    _beeper.ProcessEarBitValue(true, ear.Ear);
+                    _beeper.ProcessEarBitValue(false, ear.Ear);
                     if (ear != null)
                     {
                         if (ear.Pulse == PulseTypeEnum.Stop)
@@ -107,63 +107,10 @@ namespace Speccy.Z80_CPU
 
         public long TotalTstates = 0;
 
-        int returnvalue = 0xff;
         EarValue ear;
         bool firstread = true;
         int tapeposition = 0;
         private byte TAPE_BIT = 0x40;
-        private int LoadTape()
-        {
-            //if (pulseLevel == 0)
-            //{
-            //    pulseLevel = 1;
-            //    result &= ~(TAPE_BIT);    //reset is EAR off
-            //}
-            //else
-            //{
-            //    pulseLevel = 0;
-            //    result |= (TAPE_BIT); //set is EAR on
-            //}
-            if (firstread)
-            {
-                _tapeDevice.CurrentTstate = 0;
-                firstread = false;
-            }
-            for (; tapeposition < _tapeDevice.EarValues.Count - 1;)
-            {
-                if (_tapeDevice.EarValues[tapeposition + 1].TState < _tapeDevice.CurrentTstate)
-                {
-                    tapeposition++;
-                }
-                else
-                {
-                    break;
-                }
-            }
-
-            ear = _tapeDevice.EarValues[tapeposition];
-            _beeper.ProcessEarBitValue(true, (((ear.Ear ? 1 : 0) << 4) & 0x10) != 0);
-            if (ear != null)
-            {
-                if (ear.Pulse == PulseTypeEnum.Stop)
-                {
-                    _tapeDevice.IsPlaying = false;
-                }
-                if (ear.Ear)
-                    returnvalue &= ~(TAPE_BIT);
-                //return returnvalue |= 1 << 6;
-                else
-                    return returnvalue |= (TAPE_BIT);
-                return returnvalue;
-            }
-
-            if (_tapeDevice.CurrentTstate > TotalTstates)
-            {
-                _tapeDevice.IsPlaying = false;
-            }
-
-            return returnvalue;
-        }
 
         public void WriteByte(int address, byte data)
         {
@@ -177,7 +124,7 @@ namespace Speccy.Z80_CPU
                 _beeper.ProcessEarBitValue(false, (data & 0x10) != 0);
 
                 // tape
-                _beeper.ProcessEarBitValue(false, (data & 0x08) != 0);
+                //_beeper.ProcessEarBitValue(false, (data & 0x08) != 0);
                 //_tapeDevice.ProcessMicBit((data & 0x08) != 0);
             }
         }
