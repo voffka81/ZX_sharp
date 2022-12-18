@@ -1851,549 +1851,547 @@ namespace Speccy.Z80_CPU
             ushort Address;
 
 
-            //while (tstates < event_next_event)
+
+            byte opcode;
+
+            // Check if Statement to fetch must be handled
+            if (StatementsToFetch >= 0)
             {
-
-                byte opcode;
-
-                // Check if Statement to fetch must be handled
-                if (StatementsToFetch >= 0)
+                if (StatementsToFetch == 0)
                 {
-                    if (StatementsToFetch == 0)
-                    {
-                        // Disable next break (just in case the main program forget to do it)
-                        StatementsToFetch = -1;
-                        return;
-                    }
-                    else
-                        StatementsToFetch--;
-                }
-
-                // Check if someone is registered to receive Fetch event and eventually raise it
-                if (OnFetch != null)
-                    OnFetch();
-
-
-                // If the z80 is HALTed, execute a NOP-equivalent and loop again
-                if (_Status.Halted)
-                {
-                    IncreaseTStates(4);
+                    // Disable next break (just in case the main program forget to do it)
+                    StatementsToFetch = -1;
                     return;
                 }
+                else
+                    StatementsToFetch--;
+            }
 
-                // Fetch next instruction
-                opcode = _memory.ReadByte(_Status.PC++);
-
-                // Increment refresh register
-                _Status.R++;
-                /*
-                #warning Da eliminare
-                                System.IO.TextWriter tw = new System.IO.StreamWriter("c:\\speccy\\CSEState.txt",true);
-                                _Status.Serialize(tw);
-                                tw.Close();
-                */
+            // Check if someone is registered to receive Fetch event and eventually raise it
+            if (OnFetch != null)
+                OnFetch();
 
 
-                if (opcode == 0x76)     // HALT
+            // If the z80 is HALTed, execute a NOP-equivalent and loop again
+            if (_Status.Halted)
+            {
+                IncreaseTStates(4);
+                return;
+            }
+
+            // Fetch next instruction
+            opcode = _memory.ReadByte(_Status.PC++);
+
+            // Increment refresh register
+            _Status.R++;
+            /*
+            #warning Da eliminare
+                            System.IO.TextWriter tw = new System.IO.StreamWriter("c:\\speccy\\CSEState.txt",true);
+                            _Status.Serialize(tw);
+                            tw.Close();
+            */
+
+
+            if (opcode == 0x76)     // HALT
+            {
+                // The first check is for HALT otherwise it could be
+                // interpreted as LD (HL),(HL)
+                IncreaseTStates(4);
+                _Status.Halted = true;
+            }
+            else if ((opcode & 0xC0) == 0x40)   // LD r,r
+            {
+                HalfRegister reg1 = GetHalfRegister((byte)(opcode >> 3));
+                HalfRegister reg2 = GetHalfRegister(opcode);
+
+                if (reg1 == null)
                 {
-                    // The first check is for HALT otherwise it could be
-                    // interpreted as LD (HL),(HL)
-                    IncreaseTStates(4);
-                    _Status.Halted = true;
+                    // The target is (HL)
+                    IncreaseTStates(7);
+                    _memory.WriteByte(_Status.HL, reg2.Value);
                 }
-                else if ((opcode & 0xC0) == 0x40)   // LD r,r
+                else if (reg2 == null)
                 {
-                    HalfRegister reg1 = GetHalfRegister((byte)(opcode >> 3));
-                    HalfRegister reg2 = GetHalfRegister(opcode);
-
-                    if (reg1 == null)
-                    {
-                        // The target is (HL)
-                        IncreaseTStates(7);
-                        _memory.WriteByte(_Status.HL, reg2.Value);
-                    }
-                    else if (reg2 == null)
-                    {
-                        // The source is (HL)
-                        IncreaseTStates(7);
-                        reg1.Value = _memory.ReadByte(_Status.HL);
-                    }
-                    else
-                    {
-                        // Source and target are normal registries
-                        IncreaseTStates(4);
-                        reg1.Value = reg2.Value;
-                    }
-                }
-                else if ((opcode & 0xC0) == 0x80)
-                {
-                    // Operation beetween accumulator and other registers
-                    // Usually are identified by 10 ooo rrr where ooo is the operation and rrr is the source register
-                    HalfRegister reg = GetHalfRegister(opcode);
-                    byte _Value;
-
-                    if (reg == null)
-                    {
-                        // The source is (HL)
-                        IncreaseTStates(7);
-                        _Value = _memory.ReadByte(_Status.HL);
-                    }
-                    else
-                    {
-                        // The source is a normal registry
-                        IncreaseTStates(4);
-                        _Value = reg.Value;
-                    }
-
-                    switch (opcode & 0xF8)
-                    {
-                        case 0x80:  // ADD A,r
-                            ADD_A(_Value);
-                            break;
-                        case 0x88:  // ADC A,r
-                            ADC_A(_Value);
-                            break;
-                        case 0x90:  // SUB r
-                            SUB(_Value);
-                            break;
-                        case 0x98:  // SBC A,r
-                            SBC_A(_Value);
-                            break;
-                        case 0xA0:  // AND r
-                            AND_A(_Value);
-                            break;
-                        case 0xA8:  // XOR r
-                            XOR(_Value);
-                            break;
-                        case 0xB0:  // OR r
-                            OR(_Value);
-                            break;
-                        case 0xB8:  // CP r
-                            CP(_Value);
-                            break;
-                        default:
-                            throw new Exception("Wrong place in the right time...");
-                    }
-
-                }
-                else if ((opcode & 0xC7) == 0x04) // INC r
-                {
-                    HalfRegister reg = GetHalfRegister((byte)(opcode >> 3));
-
-                    if (reg == null)
-                    {
-                        // The target is (HL)
-                        IncreaseTStates(7);
-                        reg = new HalfRegister(_memory.ReadByte(_Status.HL));
-                        INC(reg);
-                        _memory.WriteByte(_Status.HL, reg.Value);
-                    }
-                    else
-                    {
-                        // The target is a normal registry
-                        IncreaseTStates(4);
-                        INC(reg);
-                    }
-                }
-                else if ((opcode & 0xC7) == 0x05) // DEC r
-                {
-                    HalfRegister reg = GetHalfRegister((byte)(opcode >> 3));
-
-                    if (reg == null)
-                    {
-                        // The target is (HL)
-                        IncreaseTStates(7);
-                        reg = new HalfRegister(_memory.ReadByte(_Status.HL));
-                        DEC(reg);
-                        _memory.WriteByte(_Status.HL, reg.Value);
-                    }
-                    else
-                    {
-                        // The target is a normal registry
-                        IncreaseTStates(4);
-                        DEC(reg);
-                    }
-                }
-                else if ((opcode & 0xC7) == 0x06) // LD r,nn
-                {
-                    HalfRegister reg = GetHalfRegister((byte)(opcode >> 3));
-                    byte Value = _memory.ReadByte(_Status.PC++);
-
-                    if (reg == null)
-                    {
-                        // The target is (HL)
-                        IncreaseTStates(10);
-                        _memory.WriteByte(_Status.HL, Value);
-                    }
-                    else
-                    {
-                        // The target is a normal registry
-                        IncreaseTStates(7);
-                        reg.Value = Value;
-                    }
-                }
-                else if ((opcode & 0xC7) == 0xC0) // RET cc
-                {
-                    IncreaseTStates(5);
-                    if (opcode == 0xC0 && Status.PC == 0x056C)
-                    {
-                        if (tape_load_trap() == 0)
-                            return;
-                    }
-                    if (CheckFlag(opcode))
-                    {
-                        IncreaseTStates(6);
-                        RET();
-                    }
-                }
-                else if ((opcode & 0xC7) == 0xC2) // JP cc,nn
-                {
-                    IncreaseTStates(10);
-                    if (CheckFlag(opcode))
-                        JP();
-                    else
-                        _Status.PC += 2;
-                }
-                else if ((opcode & 0xC7) == 0xC4) // CALL cc,nn
-                {
-                    IncreaseTStates(10);
-                    if (CheckFlag(opcode))
-                    {
-                        IncreaseTStates(7);
-                        CALL();
-                    }
-                    else
-                        _Status.PC += 2;
-                }
-                else if ((opcode & 0xC7) == 0xC7) // RST p
-                {
-                    IncreaseTStates(11);
-                    RST((byte)(opcode & 0x38));
-                }
-                else if ((opcode & 0xCF) == 0x01) // LD dd,nn
-                {
-                    IncreaseTStates(10);
-                    Register reg = GetRegister(opcode, true);
-                    ushort Value = _memory.ReadWord(Status.PC);
-                    Status.PC += 2;
-
-                    reg.w = Value;
-                }
-                else if ((opcode & 0xCF) == 0x03) // INC ss
-                {
-                    IncreaseTStates(6);
-                    Register reg = GetRegister(opcode, true);
-
-                    // No flags affected
-                    reg.w++;
-                }
-                else if ((opcode & 0xCF) == 0x09) // ADD HL,ss
-                {
-                    IncreaseTStates(11);
-                    Register reg = GetRegister(opcode, true);
-
-                    ADD_16(_Status.RegisterHL, reg.w);
-                }
-                else if ((opcode & 0xCF) == 0x0B) // DEC ss
-                {
-                    IncreaseTStates(6);
-                    Register reg = GetRegister(opcode, true);
-
-                    reg.w--;
-                }
-                else if ((opcode & 0xCF) == 0xC5) // PUSH qq
-                {
-                    IncreaseTStates(11);
-                    Register reg = GetRegister(opcode, false);
-
-                    Push(reg);
-                }
-
-                else if ((opcode & 0xCF) == 0xC1) // POP qq
-                {
-                    IncreaseTStates(10);
-                    Register reg = GetRegister(opcode, false);
-
-                    Pop(reg);
+                    // The source is (HL)
+                    IncreaseTStates(7);
+                    reg1.Value = _memory.ReadByte(_Status.HL);
                 }
                 else
                 {
-                    switch (opcode)
-                    {
-                        case 0x00:      // NOP
-                            IncreaseTStates(4);
-                            break;
-                        case 0x02:      // LD (BC),A
-                            IncreaseTStates(7);
-                            _memory.WriteByte(_Status.BC, _Status.A);
-                            break;
-                        case 0x07:      // RLCA
-                            IncreaseTStates(4);
-                            RLCA();
-                            break;
-                        case 0x08:      // EX AF,AF'
-                            IncreaseTStates(4);
-                            // The 2-byte contents of the register pairs AF and AF are exchanged.
-                            // Register pair AF consists of registers A' and F'.
+                    // Source and target are normal registries
+                    IncreaseTStates(4);
+                    reg1.Value = reg2.Value;
+                }
+            }
+            else if ((opcode & 0xC0) == 0x80)
+            {
+                // Operation beetween accumulator and other registers
+                // Usually are identified by 10 ooo rrr where ooo is the operation and rrr is the source register
+                HalfRegister reg = GetHalfRegister(opcode);
+                byte _Value;
+
+                if (reg == null)
+                {
+                    // The source is (HL)
+                    IncreaseTStates(7);
+                    _Value = _memory.ReadByte(_Status.HL);
+                }
+                else
+                {
+                    // The source is a normal registry
+                    IncreaseTStates(4);
+                    _Value = reg.Value;
+                }
+
+                switch (opcode & 0xF8)
+                {
+                    case 0x80:  // ADD A,r
+                        ADD_A(_Value);
+                        break;
+                    case 0x88:  // ADC A,r
+                        ADC_A(_Value);
+                        break;
+                    case 0x90:  // SUB r
+                        SUB(_Value);
+                        break;
+                    case 0x98:  // SBC A,r
+                        SBC_A(_Value);
+                        break;
+                    case 0xA0:  // AND r
+                        AND_A(_Value);
+                        break;
+                    case 0xA8:  // XOR r
+                        XOR(_Value);
+                        break;
+                    case 0xB0:  // OR r
+                        OR(_Value);
+                        break;
+                    case 0xB8:  // CP r
+                        CP(_Value);
+                        break;
+                    default:
+                        throw new Exception("Wrong place in the right time...");
+                }
+
+            }
+            else if ((opcode & 0xC7) == 0x04) // INC r
+            {
+                HalfRegister reg = GetHalfRegister((byte)(opcode >> 3));
+
+                if (reg == null)
+                {
+                    // The target is (HL)
+                    IncreaseTStates(7);
+                    reg = new HalfRegister(_memory.ReadByte(_Status.HL));
+                    INC(reg);
+                    _memory.WriteByte(_Status.HL, reg.Value);
+                }
+                else
+                {
+                    // The target is a normal registry
+                    IncreaseTStates(4);
+                    INC(reg);
+                }
+            }
+            else if ((opcode & 0xC7) == 0x05) // DEC r
+            {
+                HalfRegister reg = GetHalfRegister((byte)(opcode >> 3));
+
+                if (reg == null)
+                {
+                    // The target is (HL)
+                    IncreaseTStates(7);
+                    reg = new HalfRegister(_memory.ReadByte(_Status.HL));
+                    DEC(reg);
+                    _memory.WriteByte(_Status.HL, reg.Value);
+                }
+                else
+                {
+                    // The target is a normal registry
+                    IncreaseTStates(4);
+                    DEC(reg);
+                }
+            }
+            else if ((opcode & 0xC7) == 0x06) // LD r,nn
+            {
+                HalfRegister reg = GetHalfRegister((byte)(opcode >> 3));
+                byte Value = _memory.ReadByte(_Status.PC++);
+
+                if (reg == null)
+                {
+                    // The target is (HL)
+                    IncreaseTStates(10);
+                    _memory.WriteByte(_Status.HL, Value);
+                }
+                else
+                {
+                    // The target is a normal registry
+                    IncreaseTStates(7);
+                    reg.Value = Value;
+                }
+            }
+            else if ((opcode & 0xC7) == 0xC0) // RET cc
+            {
+                IncreaseTStates(5);
+                if (opcode == 0xC0 && Status.PC == 0x056C)
+                {
+                    if (tape_load_trap() == 0)
+                        return;
+                }
+                if (CheckFlag(opcode))
+                {
+                    IncreaseTStates(6);
+                    RET();
+                }
+            }
+            else if ((opcode & 0xC7) == 0xC2) // JP cc,nn
+            {
+                IncreaseTStates(10);
+                if (CheckFlag(opcode))
+                    JP();
+                else
+                    _Status.PC += 2;
+            }
+            else if ((opcode & 0xC7) == 0xC4) // CALL cc,nn
+            {
+                IncreaseTStates(10);
+                if (CheckFlag(opcode))
+                {
+                    IncreaseTStates(7);
+                    CALL();
+                }
+                else
+                    _Status.PC += 2;
+            }
+            else if ((opcode & 0xC7) == 0xC7) // RST p
+            {
+                IncreaseTStates(11);
+                RST((byte)(opcode & 0x38));
+            }
+            else if ((opcode & 0xCF) == 0x01) // LD dd,nn
+            {
+                IncreaseTStates(10);
+                Register reg = GetRegister(opcode, true);
+                ushort Value = _memory.ReadWord(Status.PC);
+                Status.PC += 2;
+
+                reg.w = Value;
+            }
+            else if ((opcode & 0xCF) == 0x03) // INC ss
+            {
+                IncreaseTStates(6);
+                Register reg = GetRegister(opcode, true);
+
+                // No flags affected
+                reg.w++;
+            }
+            else if ((opcode & 0xCF) == 0x09) // ADD HL,ss
+            {
+                IncreaseTStates(11);
+                Register reg = GetRegister(opcode, true);
+
+                ADD_16(_Status.RegisterHL, reg.w);
+            }
+            else if ((opcode & 0xCF) == 0x0B) // DEC ss
+            {
+                IncreaseTStates(6);
+                Register reg = GetRegister(opcode, true);
+
+                reg.w--;
+            }
+            else if ((opcode & 0xCF) == 0xC5) // PUSH qq
+            {
+                IncreaseTStates(11);
+                Register reg = GetRegister(opcode, false);
+
+                Push(reg);
+            }
+
+            else if ((opcode & 0xCF) == 0xC1) // POP qq
+            {
+                IncreaseTStates(10);
+                Register reg = GetRegister(opcode, false);
+
+                Pop(reg);
+            }
+            else
+            {
+                switch (opcode)
+                {
+                    case 0x00:      // NOP
+                        IncreaseTStates(4);
+                        break;
+                    case 0x02:      // LD (BC),A
+                        IncreaseTStates(7);
+                        _memory.WriteByte(_Status.BC, _Status.A);
+                        break;
+                    case 0x07:      // RLCA
+                        IncreaseTStates(4);
+                        RLCA();
+                        break;
+                    case 0x08:      // EX AF,AF'
+                        IncreaseTStates(4);
+                        // The 2-byte contents of the register pairs AF and AF are exchanged.
+                        // Register pair AF consists of registers A' and F'.
 
 
-                            // Tape saving trap: note this traps the EX AF,AF' at #04d0, not #04d1 as PC has already been incremented 
-                            if (_Status.PC == 0x04d1)
-                            {
-                                if (tape_save_trap() == 0)
-                                    break;
-                            }
-                            _Status.RegisterAF.Swap(_Status.RegisterAF_);
-                            break;
-                        case 0x0A:      // LD A,(BC)
-                            IncreaseTStates(7);
-                            _Status.A = _memory.ReadByte(_Status.BC);
-                            break;
+                        // Tape saving trap: note this traps the EX AF,AF' at #04d0, not #04d1 as PC has already been incremented 
+                        if (_Status.PC == 0x04d1)
+                        {
+                            if (tape_save_trap() == 0)
+                                break;
+                        }
+                        _Status.RegisterAF.Swap(_Status.RegisterAF_);
+                        break;
+                    case 0x0A:      // LD A,(BC)
+                        IncreaseTStates(7);
+                        _Status.A = _memory.ReadByte(_Status.BC);
+                        break;
 
-                        case 0x0F:      // RRCA
-                            IncreaseTStates(4);
-                            RRCA();
-                            break;
-                        case 0x10:      // DJNZ offset
-                            IncreaseTStates(8);
-                            _Status.B--;
-                            if (_Status.B != 0)
-                            {
-                                IncreaseTStates(5);
-                                JR();
-                            }
-                            _Status.PC++;
-                            break;
-                        case 0x12:      // LD (DE),A
-                            IncreaseTStates(7);
-                            _memory.WriteByte(_Status.DE, _Status.A);
-                            break;
-                        case 0x17:      // RLA
-                            IncreaseTStates(4);
-                            RLA();
-                            break;
-                        case 0x18:      // JR offset
-                            IncreaseTStates(12);
+                    case 0x0F:      // RRCA
+                        IncreaseTStates(4);
+                        RRCA();
+                        break;
+                    case 0x10:      // DJNZ offset
+                        IncreaseTStates(8);
+                        _Status.B--;
+                        if (_Status.B != 0)
+                        {
+                            IncreaseTStates(5);
                             JR();
-                            _Status.PC++;
-                            break;
-                        case 0x1A:      // LD A,(DE)
-                            IncreaseTStates(7);
-                            _Status.A = _memory.ReadByte(_Status.DE);
-                            break;
-                        case 0x1F:      // RRA
-                            IncreaseTStates(4);
-                            RRA();
-                            break;
-                        case 0x20:      // JR NZ,offset
-                            IncreaseTStates(7);
-                            if ((_Status.F & FlagRegisterDefinition.Z) == 0)
-                            {
-                                IncreaseTStates(5);
-                                JR();
-                            }
-                            _Status.PC++;
-                            break;
-                        case 0x22:      // LD (nnnn),HL
-                            IncreaseTStates(16);
-                            LD_nndd(_Status.RegisterHL);
-                            break;
-                        case 0x27:      // DAA
-                            IncreaseTStates(4);
-                            DAA();
-                            break;
-                        case 0x28:      // JR Z,offset
-                            IncreaseTStates(7);
-                            if ((_Status.F & FlagRegisterDefinition.Z) != 0)
-                            {
-                                IncreaseTStates(5);
-                                JR();
-                            }
-                            _Status.PC++;
-                            break;
-                        case 0x2A:      // LD HL,(nnnn)
-                            IncreaseTStates(16);
-                            LD_ddnn(_Status.RegisterHL);
-                            break;
-                        case 0x2F:      // CPL
-                            IncreaseTStates(4);
-                            CPL();
-                            break;
-                        case 0x30:      // JR NC,offset
-                            IncreaseTStates(7);
-                            if ((_Status.F & FlagRegisterDefinition.C) == 0)
-                            {
-                                IncreaseTStates(5);
-                                JR();
-                            }
-                            _Status.PC++;
-                            break;
-                        case 0x32:      // LD (nnnn),A
-                            IncreaseTStates(13);
-                            Address = _memory.ReadWord(_Status.PC);
-                            _Status.PC += 2;
-                            _memory.WriteByte(Address, _Status.A);
-                            break;
-                        case 0x37:      // SCF
-                            IncreaseTStates(4);
-                            _Status.F |= FlagRegisterDefinition.C;
-                            break;
-                        case 0x38:      // JR C,offset
-                            IncreaseTStates(7);
-                            if ((_Status.F & FlagRegisterDefinition.C) != 0)
-                            {
-                                IncreaseTStates(5);
-                                JR();
-                            }
-                            _Status.PC++;
-                            break;
-                        case 0x3A:      // LD A,(nnnn)
-                            IncreaseTStates(13);
-                            Address = _memory.ReadWord(_Status.PC);
-                            _Status.PC += 2;
-                            _Status.A = _memory.ReadByte(Address);
-                            break;
-                        case 0x3F:      // CCF
-                            IncreaseTStates(4);
-                            CCF();
-                            break;
-                        case 0xC3:      // JP nnnn
-                            IncreaseTStates(10);
-                            JP();
-                            break;
-                        case 0xC6:      // ADD A,nn
-                            IncreaseTStates(7);
-                            ADD_A(_memory.ReadByte(_Status.PC++));
-                            break;
-                        case 0xC9:      // RET
-                            IncreaseTStates(10);
-                            RET();
-                            break;
-                        case 0xCB:      // CBxx opcodes
-                            _Status.R++;
-                            Execute_CB(_memory.ReadByte(_Status.PC++));
-                            break;
-                        case 0xCD:      // CALL nnnn
-                            IncreaseTStates(17);
-                            CALL();
-                            break;
-                        case 0xCE:      // ADC A,nn
-                            IncreaseTStates(7);
-                            ADC_A(_memory.ReadByte(_Status.PC++));
-                            break;
-                        case 0xD3:      // OUT (nn),A
-                            IncreaseTStates(11);
-                            // The operand n is placed on the bottom half (A0 through A7) of the address
-                            // bus to select the I/O device at one of 256 possible ports. The contents of the
-                            // Accumulator (register A) also appear on the top half (A8 through A15) of
-                            // the address bus at this time. Then the byte contained in the Accumulator is
-                            // placed on the data bus and written to the selected peripheral device.
-                            _io.WriteByte((ushort)(_memory.ReadByte(_Status.PC++) | (_Status.A << 8)), _Status.A);
-                            break;
-                        case 0xD6:      // SUB nn
-                            IncreaseTStates(7);
-                            SUB(_memory.ReadByte(_Status.PC++));
-                            break;
-                        case 0xD9:      // EXX
-                            IncreaseTStates(4);
-                            // Each 2-byte value in register pairs BC, DE, and HL is exchanged with the
-                            // 2-byte value in BC', DE', and HL', respectively.
+                        }
+                        _Status.PC++;
+                        break;
+                    case 0x12:      // LD (DE),A
+                        IncreaseTStates(7);
+                        _memory.WriteByte(_Status.DE, _Status.A);
+                        break;
+                    case 0x17:      // RLA
+                        IncreaseTStates(4);
+                        RLA();
+                        break;
+                    case 0x18:      // JR offset
+                        IncreaseTStates(12);
+                        JR();
+                        _Status.PC++;
+                        break;
+                    case 0x1A:      // LD A,(DE)
+                        IncreaseTStates(7);
+                        _Status.A = _memory.ReadByte(_Status.DE);
+                        break;
+                    case 0x1F:      // RRA
+                        IncreaseTStates(4);
+                        RRA();
+                        break;
+                    case 0x20:      // JR NZ,offset
+                        IncreaseTStates(7);
+                        if ((_Status.F & FlagRegisterDefinition.Z) == 0)
+                        {
+                            IncreaseTStates(5);
+                            JR();
+                        }
+                        _Status.PC++;
+                        break;
+                    case 0x22:      // LD (nnnn),HL
+                        IncreaseTStates(16);
+                        LD_nndd(_Status.RegisterHL);
+                        break;
+                    case 0x27:      // DAA
+                        IncreaseTStates(4);
+                        DAA();
+                        break;
+                    case 0x28:      // JR Z,offset
+                        IncreaseTStates(7);
+                        if ((_Status.F & FlagRegisterDefinition.Z) != 0)
+                        {
+                            IncreaseTStates(5);
+                            JR();
+                        }
+                        _Status.PC++;
+                        break;
+                    case 0x2A:      // LD HL,(nnnn)
+                        IncreaseTStates(16);
+                        LD_ddnn(_Status.RegisterHL);
+                        break;
+                    case 0x2F:      // CPL
+                        IncreaseTStates(4);
+                        CPL();
+                        break;
+                    case 0x30:      // JR NC,offset
+                        IncreaseTStates(7);
+                        if ((_Status.F & FlagRegisterDefinition.C) == 0)
+                        {
+                            IncreaseTStates(5);
+                            JR();
+                        }
+                        _Status.PC++;
+                        break;
+                    case 0x32:      // LD (nnnn),A
+                        IncreaseTStates(13);
+                        Address = _memory.ReadWord(_Status.PC);
+                        _Status.PC += 2;
+                        _memory.WriteByte(Address, _Status.A);
+                        break;
+                    case 0x37:      // SCF
+                        IncreaseTStates(4);
+                        _Status.F |= FlagRegisterDefinition.C;
+                        break;
+                    case 0x38:      // JR C,offset
+                        IncreaseTStates(7);
+                        if ((_Status.F & FlagRegisterDefinition.C) != 0)
+                        {
+                            IncreaseTStates(5);
+                            JR();
+                        }
+                        _Status.PC++;
+                        break;
+                    case 0x3A:      // LD A,(nnnn)
+                        IncreaseTStates(13);
+                        Address = _memory.ReadWord(_Status.PC);
+                        _Status.PC += 2;
+                        _Status.A = _memory.ReadByte(Address);
+                        break;
+                    case 0x3F:      // CCF
+                        IncreaseTStates(4);
+                        CCF();
+                        break;
+                    case 0xC3:      // JP nnnn
+                        IncreaseTStates(10);
+                        JP();
+                        break;
+                    case 0xC6:      // ADD A,nn
+                        IncreaseTStates(7);
+                        ADD_A(_memory.ReadByte(_Status.PC++));
+                        break;
+                    case 0xC9:      // RET
+                        IncreaseTStates(10);
+                        RET();
+                        break;
+                    case 0xCB:      // CBxx opcodes
+                        _Status.R++;
+                        Execute_CB(_memory.ReadByte(_Status.PC++));
+                        break;
+                    case 0xCD:      // CALL nnnn
+                        IncreaseTStates(17);
+                        CALL();
+                        break;
+                    case 0xCE:      // ADC A,nn
+                        IncreaseTStates(7);
+                        ADC_A(_memory.ReadByte(_Status.PC++));
+                        break;
+                    case 0xD3:      // OUT (nn),A
+                        IncreaseTStates(11);
+                        // The operand n is placed on the bottom half (A0 through A7) of the address
+                        // bus to select the I/O device at one of 256 possible ports. The contents of the
+                        // Accumulator (register A) also appear on the top half (A8 through A15) of
+                        // the address bus at this time. Then the byte contained in the Accumulator is
+                        // placed on the data bus and written to the selected peripheral device.
+                        _io.WriteByte((ushort)(_memory.ReadByte(_Status.PC++) | (_Status.A << 8)), _Status.A);
+                        break;
+                    case 0xD6:      // SUB nn
+                        IncreaseTStates(7);
+                        SUB(_memory.ReadByte(_Status.PC++));
+                        break;
+                    case 0xD9:      // EXX
+                        IncreaseTStates(4);
+                        // Each 2-byte value in register pairs BC, DE, and HL is exchanged with the
+                        // 2-byte value in BC', DE', and HL', respectively.
 
-                            _Status.RegisterBC.Swap(Status.RegisterBC_);
-                            _Status.RegisterDE.Swap(Status.RegisterDE_);
-                            _Status.RegisterHL.Swap(Status.RegisterHL_);
-                            break;
-                        case 0xDB:      // IN A,(nn)
-                            IncreaseTStates(11);
-                            // The operand n is placed on the bottom half (A0 through A7) of the address
-                            // bus to select the I/O device at one of 256 possible ports. The contents of the
-                            // Accumulator also appear on the top half (A8 through A15) of the address
-                            // bus at this time. Then one byte from the selected port is placed on the data
-                            // bus and written to the Accumulator (register A) in the CPU.
-                            _Status.A = _io.ReadByte((ushort)(_memory.ReadByte(_Status.PC++) | (_Status.A << 8)));
-                            break;
-
-
-
-                        case 0xDD:      // DDxx opcodes
-                            _Status.R++;
-                            Execute_DDFD(_Status.RegisterIX, _memory.ReadByte(_Status.PC++));
-                            break;
-                        case 0xDE:      // SBC A,nn
-                            IncreaseTStates(4);
-                            SBC_A(_memory.ReadByte(_Status.PC++));
-                            break;
-                        case 0xE3:      // EX (SP),HL
-                            IncreaseTStates(19);
-                            {
-                                ushort _w = _memory.ReadWord(_Status.SP);
-                                _memory.WriteWord(_Status.SP, _Status.HL);
-                                _Status.HL = _w;
-                            }
-                            break;
-                        case 0xE6:      // AND nn
-                            IncreaseTStates(7);
-                            AND_A(_memory.ReadByte(_Status.PC++));
-                            break;
-                        case 0xE9:      // JP HL
-                            IncreaseTStates(4);
-                            _Status.PC = _Status.HL;
-                            break;
-                        case 0xEB:      // EX DE,HL
-                            IncreaseTStates(4);
-                            _Status.RegisterDE.Swap(_Status.RegisterHL);
-                            break;
+                        _Status.RegisterBC.Swap(Status.RegisterBC_);
+                        _Status.RegisterDE.Swap(Status.RegisterDE_);
+                        _Status.RegisterHL.Swap(Status.RegisterHL_);
+                        break;
+                    case 0xDB:      // IN A,(nn)
+                        IncreaseTStates(11);
+                        // The operand n is placed on the bottom half (A0 through A7) of the address
+                        // bus to select the I/O device at one of 256 possible ports. The contents of the
+                        // Accumulator also appear on the top half (A8 through A15) of the address
+                        // bus at this time. Then one byte from the selected port is placed on the data
+                        // bus and written to the Accumulator (register A) in the CPU.
+                        _Status.A = _io.ReadByte((ushort)(_memory.ReadByte(_Status.PC++) | (_Status.A << 8)));
+                        break;
 
 
-                        case 0xed:      // EDxx opcodes
-                            _Status.R++;
-                            Execute_ED(_memory.ReadByte(_Status.PC++));
-                            break;
-                        case 0xEE:      // XOR A,nn
-                            IncreaseTStates(7);
-                            XOR(_memory.ReadByte(_Status.PC++));
-                            break;
-                        case 0xF3:      // DI
-                            IncreaseTStates(4);
-                            // DI disables the maskable interrupt by resetting the interrupt enable flip-flops
-                            // (IFF1 and IFF2). Note that this instruction disables the maskable
-                            // interrupt during its execution.
-                            _Status.IFF1 = false;
-                            _Status.IFF2 = false;
-                            break;
-                        case 0xF6:      // OR nn
-                            IncreaseTStates(7);
-                            OR(_memory.ReadByte(_Status.PC++));
-                            break;
-                        case 0xF9:      // LD SP,HL
-                            IncreaseTStates(6);
-                            _Status.SP = _Status.HL;
-                            break;
-                        case 0xFB:      // EI
-                            IncreaseTStates(4);
-                            // The enable interrupt instruction sets both interrupt enable flip flops (IFF1
-                            // and IFF2) to a logic 1, allowing recognition of any maskable interrupt. Note
-                            // that during the execution of this instruction and the following instruction,
-                            // maskable interrupts are disabled.
-                            _Status.IFF1 = true;
-                            _Status.IFF2 = true;
-                            break;
-                        case 0xFD:      // FDxx opcodes
-                            _Status.R++;
-                            Execute_DDFD(_Status.RegisterIY, _memory.ReadByte(_Status.PC++));
-                            break;
-                        case 0xFE:      // CP nn
-                            IncreaseTStates(7);
-                            CP(_memory.ReadByte(_Status.PC++));
-                            break;
-                        default:
-                            throw new Exception(string.Format("Internal execute error. Opcode {0} not implemented.", opcode));
+
+                    case 0xDD:      // DDxx opcodes
+                        _Status.R++;
+                        Execute_DDFD(_Status.RegisterIX, _memory.ReadByte(_Status.PC++));
+                        break;
+                    case 0xDE:      // SBC A,nn
+                        IncreaseTStates(4);
+                        SBC_A(_memory.ReadByte(_Status.PC++));
+                        break;
+                    case 0xE3:      // EX (SP),HL
+                        IncreaseTStates(19);
+                        {
+                            ushort _w = _memory.ReadWord(_Status.SP);
+                            _memory.WriteWord(_Status.SP, _Status.HL);
+                            _Status.HL = _w;
+                        }
+                        break;
+                    case 0xE6:      // AND nn
+                        IncreaseTStates(7);
+                        AND_A(_memory.ReadByte(_Status.PC++));
+                        break;
+                    case 0xE9:      // JP HL
+                        IncreaseTStates(4);
+                        _Status.PC = _Status.HL;
+                        break;
+                    case 0xEB:      // EX DE,HL
+                        IncreaseTStates(4);
+                        _Status.RegisterDE.Swap(_Status.RegisterHL);
+                        break;
 
 
-                    }
+                    case 0xed:      // EDxx opcodes
+                        _Status.R++;
+                        Execute_ED(_memory.ReadByte(_Status.PC++));
+                        break;
+                    case 0xEE:      // XOR A,nn
+                        IncreaseTStates(7);
+                        XOR(_memory.ReadByte(_Status.PC++));
+                        break;
+                    case 0xF3:      // DI
+                        IncreaseTStates(4);
+                        // DI disables the maskable interrupt by resetting the interrupt enable flip-flops
+                        // (IFF1 and IFF2). Note that this instruction disables the maskable
+                        // interrupt during its execution.
+                        _Status.IFF1 = false;
+                        _Status.IFF2 = false;
+                        break;
+                    case 0xF6:      // OR nn
+                        IncreaseTStates(7);
+                        OR(_memory.ReadByte(_Status.PC++));
+                        break;
+                    case 0xF9:      // LD SP,HL
+                        IncreaseTStates(6);
+                        _Status.SP = _Status.HL;
+                        break;
+                    case 0xFB:      // EI
+                        IncreaseTStates(4);
+                        // The enable interrupt instruction sets both interrupt enable flip flops (IFF1
+                        // and IFF2) to a logic 1, allowing recognition of any maskable interrupt. Note
+                        // that during the execution of this instruction and the following instruction,
+                        // maskable interrupts are disabled.
+                        _Status.IFF1 = true;
+                        _Status.IFF2 = true;
+                        break;
+                    case 0xFD:      // FDxx opcodes
+                        _Status.R++;
+                        Execute_DDFD(_Status.RegisterIY, _memory.ReadByte(_Status.PC++));
+                        break;
+                    case 0xFE:      // CP nn
+                        IncreaseTStates(7);
+                        CP(_memory.ReadByte(_Status.PC++));
+                        break;
+                    default:
+                        throw new Exception(string.Format("Internal execute error. Opcode {0} not implemented.", opcode));
+
+
                 }
             }
         }
+
 
         /// <summary>
         /// Execution of DD xx codes and FD xx codes.

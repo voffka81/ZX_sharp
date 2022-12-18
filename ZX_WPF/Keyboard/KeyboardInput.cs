@@ -50,7 +50,8 @@ namespace ZX_WPF.Keyboard
         }
 
         public static bool IsKeyDown(SpectrumKeyCode spectrumKey)
-        {
+        {   if(spectrumKey==SpectrumKeyCode.Invalid)
+                return false;
             return KeyStates.Down == (GetKeyState(Map(spectrumKey)) & KeyStates.Down);
         }
 

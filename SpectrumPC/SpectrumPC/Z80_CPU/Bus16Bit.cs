@@ -80,9 +80,9 @@ namespace Speccy.Z80_CPU
                             _tapeDevice.IsPlaying = false;
                         }
                         if (ear.Ear)
-                            result |= 1 << 6;
+                            result &= ~(TAPE_BIT);
                         else
-                            result &= ~(1 << 6);
+                            result &= ~(TAPE_BIT);
                     }
 
                     if (_tapeDevice.CurrentTstate > _tapeDevice.TotalTstates)
