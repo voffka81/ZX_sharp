@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="MainWindow"
-        xmlns:local="clr-namespace:ZX_sharp">
+        xmlns:local="clr-namespace:ZX_WPF">
     <Window.DataContext>
         <local:MainWindowViewModel/>
     </Window.DataContext>
@@ -20,11 +20,10 @@
         </Grid.ColumnDefinitions>
         <StackPanel  Orientation="Horizontal" Grid.ColumnSpan="2" >
             <Rectangle x:Name="keyIndicator"  Width="10" Height="10" Fill="Red" Margin="5 0 0 5"></Rectangle>
-            <Button Name="btnOpenFile" Height="30" Width="70" Click="btnOpenFile_Click" Margin="5 0 0 5">Load image</Button>
-            <Button Name="btnPlayTape" Height="30" Width="70" Click="btnPlayTape_Click" Margin="5 0 0 5">Play Tape</Button>
-            
-            <Button Name="btnNothing" Height="30" Width="70" Margin="5 0 0 5">N</Button>
-            <Button Name="btnReset" Height="30" Width="70" Click="btnReset_Click" Margin="50 0 0 5">Reset PC</Button>
+            <Button Name="btnOpenFile" Focusable="False" Height="30" Width="70" Command="{Binding OpenFileCommand}" Margin="5 0 0 5">Load image</Button>
+            <Button Name="btnPlayTape" Focusable="False" Height="30" Width="70" Command="{Binding PlayTapeCommand}" Margin="5 0 0 5">Play Tape</Button>
+
+            <Button Name="btnReset" Focusable="False" Height="30" Width="70" Command="{Binding ResetCommand}" Margin="50 0 0 5">Reset PC</Button>
         </StackPanel>
         <Image Grid.Row="2" x:Name="screenImage" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Source="{Binding Screen}"></Image>
         <Grid Grid.Row="2" Grid.Column="2">
@@ -37,9 +36,13 @@
                 <ColumnDefinition   Width="*"/>
             </Grid.ColumnDefinitions>
             <StackPanel Orientation="Horizontal">
-                <TextBlock Text="SP=>"/>
-                <TextBlock Text="{Binding Speccy.CpuDebugInfo.SP, StringFormat={}{0:x}}"/>
+                <TextBlock Text="PC=>"/>
+                <TextBlock Text="{Binding Speccy.CpuDebugInfo.PC}"/>
             </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <TextBlock Text="{Binding Speccy.CpuDebugInfo.OpCode, StringFormat={}{0:x}}"/>
+            </StackPanel>
+            
         </Grid>
     </Grid>
 </Window>

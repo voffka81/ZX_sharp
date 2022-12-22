@@ -23,7 +23,7 @@ namespace Speccy
         private readonly Kempston _joystik;
         private readonly TapePlayer _tapeDevice;
 
-        public Status CpuDebugInfo => _z80.Status;
+        public Status CpuDebugInfo => _z80.DebugInfo;
 
         public bool ComputerRunning;
         public Kempston Joystik => _joystik;

@@ -1,16 +1,18 @@
 ﻿using Microsoft.Win32;
 using Speccy;
 using System;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using ZX_WPF.Audio;
 using ZX_WPF.Keyboard;
 
-namespace ZX_sharp
+namespace ZX_WPF
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
@@ -27,8 +29,15 @@ namespace ZX_sharp
 
         public ImageSource Screen => _writeableBitmap;
 
+        public ICommand OpenFileCommand { get; set; }
+        public ICommand ResetCommand { get; set; }
+        public ICommand PlayTapeCommand { get; set; }
+
         public MainWindowViewModel()
         {
+#if DEBUG
+            if (DesignerProperties.GetIsInDesignMode(new DependencyObject())) return;
+#endif
             _renderTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(2) };
             _machineTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1) };
             _keyArray = Enum.GetValues(typeof(SpectrumKeyCode)).Cast<SpectrumKeyCode>().ToArray();
@@ -42,21 +51,25 @@ namespace ZX_sharp
 
             Speccy = new Computer();
             _soundDevice = new BeeperProvider();
+
+            OpenFileCommand = new RelayCommand(o => OpenFile());
+            ResetCommand = new RelayCommand(o => ResetPC());
+            PlayTapeCommand = new RelayCommand(o => PlayTape());
             Initialize();
         }
 
-        private void btnOpenFile_Click(object sender, RoutedEventArgs e)
+        private void OpenFile()
         {
             OpenFileDialog openFileDialog = new OpenFileDialog() { Filter = "All supported files|*.z80;*.tap;|*.tap snapshots (*.z80)|*.z80|tape file (*.tap)|*.tap" };
             if (openFileDialog.ShowDialog() == true)
                 Speccy.TapeInput(openFileDialog.FileName);
         }
 
-        private void btnReset_Click(object sender, RoutedEventArgs e)
+        private void ResetPC()
         {
             Speccy.Reset();
         }
-        private void btnPlayTape_Click(object sender, RoutedEventArgs e)
+        private void PlayTape()
         {
             Speccy.TapeDevice.Play();
         }

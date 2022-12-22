@@ -3,13 +3,11 @@
 namespace Speccy.Z80_CPU
 {
     /// <summary>
-	/// Z80 Status
-	/// </summary>
-	[AddINotifyPropertyChangedInterface]
+    /// Z80 Status
+    /// </summary>
+    [AddINotifyPropertyChangedInterface]
     public class Status
     {
-
-
         private Register _RegisterAF = new Register();
         private Register _RegisterBC = new Register();
         private Register _RegisterDE = new Register();
@@ -34,6 +32,19 @@ namespace Speccy.Z80_CPU
         private bool _IFF2;
         private byte _IM;
 
+
+        private byte _opCode;
+        public byte OpCode
+        {
+            get
+            {
+                return _opCode;
+            }
+            set
+            {
+                _opCode = value;
+            }
+        }
 
         #region Register AF
 

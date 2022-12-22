@@ -8,8 +8,7 @@ namespace Speccy.Z80_CPU
     /// </summary>
     public class Z80CPU
     {
-
-        public Status Status => _status;
+        public Status DebugInfo => _status;
 
         private IBus16Bit _memory;
         private IPorts _io;
@@ -82,9 +81,6 @@ namespace Speccy.Z80_CPU
             LookupTable_sz53p[0] |= FlagRegisterDefinition.Z;
 
         }
-
-
-
 
         /// <summary>
         /// Create new system based on Z80
@@ -183,8 +179,8 @@ namespace Speccy.Z80_CPU
         #region Misc functions
 
         /// <summary>
-        /// From an opcode returns a half register following the rules
-        /// Reg opcode
+        /// From an _opCode returns a half register following the rules
+        /// Reg _opCode
         ///   A xxxxx111
         ///   B xxxxx000
         ///   C xxxxx001
@@ -193,11 +189,11 @@ namespace Speccy.Z80_CPU
         ///   H xxxxx100
         ///   L xxxxx101
         /// </summary>
-        /// <param name="opcode">opcode</param>
-        /// <returns>The half register or null if opcode is 110 (it is the ID for (HL))</returns>
-        private HalfRegister GetHalfRegister(byte opcode)
+        /// <param name="_opCode">_opCode</param>
+        /// <returns>The half register or null if _opCode is 110 (it is the ID for (HL))</returns>
+        private HalfRegister GetHalfRegister(byte _opCode)
         {
-            switch (opcode & 0x07)
+            switch (_opCode & 0x07)
             {
                 case 0x00:
                     return _status.RegisterBC.h;
@@ -221,19 +217,19 @@ namespace Speccy.Z80_CPU
 
 
         /// <summary>
-        /// From an opcode return a register following the rules
-        /// Reg         opcode
+        /// From an _opCode return a register following the rules
+        /// Reg         _opCode
         ///  BC         xx00xxxx
         ///  DE         xx01xxxx
         ///  HL         xx10xxxx
         ///  SP or AF   xx11xxxx
         /// </summary>
-        /// <param name="opcode">opcode</param>
-        /// <param name="ReturnSP">Checked if opcode is 11. If this parameter is true then SP is returned else AF is returned</param>
+        /// <param name="_opCode">_opCode</param>
+        /// <param name="ReturnSP">Checked if _opCode is 11. If this parameter is true then SP is returned else AF is returned</param>
         /// <returns>The register</returns>
-        private Register GetRegister(byte opcode, bool ReturnSP)
+        private Register GetRegister(byte _opCode, bool ReturnSP)
         {
-            switch (opcode & 0x30)
+            switch (_opCode & 0x30)
             {
                 case 0x00:
                     return _status.RegisterBC;
@@ -252,8 +248,8 @@ namespace Speccy.Z80_CPU
 
 
         /// <summary>
-        /// Check the flag related to opcode according with the following table:
-        /// Cond opcode   Flag Description
+        /// Check the flag related to _opCode according with the following table:
+        /// Cond _opCode   Flag Description
         /// NZ   xx000xxx  Z   Not Zero
         ///  Z   xx001xxx  Z   Zero
         /// NC   xx010xxx  C   Not Carry
@@ -263,15 +259,15 @@ namespace Speccy.Z80_CPU
         ///  P   xx110xxx  S   Sign positive
         ///  M   xx111xxx  S   Sign negative
         /// </summary>
-        /// <param name="opcode">The opcode</param>
+        /// <param name="_opCode">The _opCode</param>
         /// <returns>True if the condition is satisfied otherwise false</returns>
-        private bool CheckFlag(byte opcode)
+        private bool CheckFlag(byte _opCode)
         {
             bool Not = false;
             byte Flag;
 
             // Find the right flag and the condition
-            switch ((opcode >> 3) & 0x07)
+            switch ((_opCode >> 3) & 0x07)
             {
                 case 0:
                     Not = true;
@@ -1839,10 +1835,6 @@ namespace Speccy.Z80_CPU
         {
             ushort Address;
 
-
-
-            byte opcode;
-
             // Check if Statement to fetch must be handled
             if (StatementsToFetch >= 0)
             {
@@ -1869,7 +1861,7 @@ namespace Speccy.Z80_CPU
             }
 
             // Fetch next instruction
-            opcode = _memory.ReadByte(_status.PC++);
+            _status.OpCode = _memory.ReadByte(_status.PC++);
 
             // Increment refresh register
             _status.R++;
@@ -1881,17 +1873,17 @@ namespace Speccy.Z80_CPU
             */
 
 
-            if (opcode == 0x76)     // HALT
+            if (_status.OpCode == 0x76)     // HALT
             {
                 // The first check is for HALT otherwise it could be
                 // interpreted as LD (HL),(HL)
                 IncreaseTStates(4);
                 _status.Halted = true;
             }
-            else if ((opcode & 0xC0) == 0x40)   // LD r,r
+            else if ((_status.OpCode & 0xC0) == 0x40)   // LD r,r
             {
-                HalfRegister reg1 = GetHalfRegister((byte)(opcode >> 3));
-                HalfRegister reg2 = GetHalfRegister(opcode);
+                HalfRegister reg1 = GetHalfRegister((byte)(_status.OpCode >> 3));
+                HalfRegister reg2 = GetHalfRegister(_status.OpCode);
 
                 if (reg1 == null)
                 {
@@ -1912,11 +1904,11 @@ namespace Speccy.Z80_CPU
                     reg1.Value = reg2.Value;
                 }
             }
-            else if ((opcode & 0xC0) == 0x80)
+            else if ((_status.OpCode & 0xC0) == 0x80)
             {
                 // Operation beetween accumulator and other registers
                 // Usually are identified by 10 ooo rrr where ooo is the operation and rrr is the source register
-                HalfRegister reg = GetHalfRegister(opcode);
+                HalfRegister reg = GetHalfRegister(_status.OpCode);
                 byte _Value;
 
                 if (reg == null)
@@ -1932,7 +1924,7 @@ namespace Speccy.Z80_CPU
                     _Value = reg.Value;
                 }
 
-                switch (opcode & 0xF8)
+                switch (_status.OpCode & 0xF8)
                 {
                     case 0x80:  // ADD A,r
                         ADD_A(_Value);
@@ -1963,9 +1955,9 @@ namespace Speccy.Z80_CPU
                 }
 
             }
-            else if ((opcode & 0xC7) == 0x04) // INC r
+            else if ((_status.OpCode & 0xC7) == 0x04) // INC r
             {
-                HalfRegister reg = GetHalfRegister((byte)(opcode >> 3));
+                HalfRegister reg = GetHalfRegister((byte)(_status.OpCode >> 3));
 
                 if (reg == null)
                 {
@@ -1982,9 +1974,9 @@ namespace Speccy.Z80_CPU
                     INC(reg);
                 }
             }
-            else if ((opcode & 0xC7) == 0x05) // DEC r
+            else if ((_status.OpCode & 0xC7) == 0x05) // DEC r
             {
-                HalfRegister reg = GetHalfRegister((byte)(opcode >> 3));
+                HalfRegister reg = GetHalfRegister((byte)(_status.OpCode >> 3));
 
                 if (reg == null)
                 {
@@ -2001,9 +1993,9 @@ namespace Speccy.Z80_CPU
                     DEC(reg);
                 }
             }
-            else if ((opcode & 0xC7) == 0x06) // LD r,nn
+            else if ((_status.OpCode & 0xC7) == 0x06) // LD r,nn
             {
-                HalfRegister reg = GetHalfRegister((byte)(opcode >> 3));
+                HalfRegister reg = GetHalfRegister((byte)(_status.OpCode >> 3));
                 byte Value = _memory.ReadByte(_status.PC++);
 
                 if (reg == null)
@@ -2019,32 +2011,32 @@ namespace Speccy.Z80_CPU
                     reg.Value = Value;
                 }
             }
-            else if ((opcode & 0xC7) == 0xC0) // RET cc
+            else if ((_status.OpCode & 0xC7) == 0xC0) // RET cc
             {
                 IncreaseTStates(5);
-                if (opcode == 0xC0 && _status.PC == 0x056C)
+                if (_status.OpCode == 0xC0 && _status.PC == 0x056C)
                 {
                     if (tape_load_trap() == 0)
                         return;
                 }
-                if (CheckFlag(opcode))
+                if (CheckFlag(_status.OpCode))
                 {
                     IncreaseTStates(6);
                     RET();
                 }
             }
-            else if ((opcode & 0xC7) == 0xC2) // JP cc,nn
+            else if ((_status.OpCode & 0xC7) == 0xC2) // JP cc,nn
             {
                 IncreaseTStates(10);
-                if (CheckFlag(opcode))
+                if (CheckFlag(_status.OpCode))
                     JP();
                 else
                     _status.PC += 2;
             }
-            else if ((opcode & 0xC7) == 0xC4) // CALL cc,nn
+            else if ((_status.OpCode & 0xC7) == 0xC4) // CALL cc,nn
             {
                 IncreaseTStates(10);
-                if (CheckFlag(opcode))
+                if (CheckFlag(_status.OpCode))
                 {
                     IncreaseTStates(7);
                     CALL();
@@ -2052,60 +2044,60 @@ namespace Speccy.Z80_CPU
                 else
                     _status.PC += 2;
             }
-            else if ((opcode & 0xC7) == 0xC7) // RST p
+            else if ((_status.OpCode & 0xC7) == 0xC7) // RST p
             {
                 IncreaseTStates(11);
-                RST((byte)(opcode & 0x38));
+                RST((byte)(_status.OpCode & 0x38));
             }
-            else if ((opcode & 0xCF) == 0x01) // LD dd,nn
+            else if ((_status.OpCode & 0xCF) == 0x01) // LD dd,nn
             {
                 IncreaseTStates(10);
-                Register reg = GetRegister(opcode, true);
+                Register reg = GetRegister(_status.OpCode, true);
                 ushort Value = _memory.ReadWord(_status.PC);
                 _status.PC += 2;
 
                 reg.w = Value;
             }
-            else if ((opcode & 0xCF) == 0x03) // INC ss
+            else if ((_status.OpCode & 0xCF) == 0x03) // INC ss
             {
                 IncreaseTStates(6);
-                Register reg = GetRegister(opcode, true);
+                Register reg = GetRegister(_status.OpCode, true);
 
                 // No flags affected
                 reg.w++;
             }
-            else if ((opcode & 0xCF) == 0x09) // ADD HL,ss
+            else if ((_status.OpCode & 0xCF) == 0x09) // ADD HL,ss
             {
                 IncreaseTStates(11);
-                Register reg = GetRegister(opcode, true);
+                Register reg = GetRegister(_status.OpCode, true);
 
                 ADD_16(_status.RegisterHL, reg.w);
             }
-            else if ((opcode & 0xCF) == 0x0B) // DEC ss
+            else if ((_status.OpCode & 0xCF) == 0x0B) // DEC ss
             {
                 IncreaseTStates(6);
-                Register reg = GetRegister(opcode, true);
+                Register reg = GetRegister(_status.OpCode, true);
 
                 reg.w--;
             }
-            else if ((opcode & 0xCF) == 0xC5) // PUSH qq
+            else if ((_status.OpCode & 0xCF) == 0xC5) // PUSH qq
             {
                 IncreaseTStates(11);
-                Register reg = GetRegister(opcode, false);
+                Register reg = GetRegister(_status.OpCode, false);
 
                 Push(reg);
             }
 
-            else if ((opcode & 0xCF) == 0xC1) // POP qq
+            else if ((_status.OpCode & 0xCF) == 0xC1) // POP qq
             {
                 IncreaseTStates(10);
-                Register reg = GetRegister(opcode, false);
+                Register reg = GetRegister(_status.OpCode, false);
 
                 Pop(reg);
             }
             else
             {
-                switch (opcode)
+                switch (_status.OpCode)
                 {
                     case 0x00:      // NOP
                         IncreaseTStates(4);
@@ -2256,7 +2248,7 @@ namespace Speccy.Z80_CPU
                         IncreaseTStates(10);
                         RET();
                         break;
-                    case 0xCB:      // CBxx opcodes
+                    case 0xCB:      // CBxx _opCodes
                         _status.R++;
                         Execute_CB(_memory.ReadByte(_status.PC++));
                         break;
@@ -2302,7 +2294,7 @@ namespace Speccy.Z80_CPU
 
 
 
-                    case 0xDD:      // DDxx opcodes
+                    case 0xDD:      // DDxx _opCodes
                         _status.R++;
                         Execute_DDFD(_status.RegisterIX, _memory.ReadByte(_status.PC++));
                         break;
@@ -2332,7 +2324,7 @@ namespace Speccy.Z80_CPU
                         break;
 
 
-                    case 0xed:      // EDxx opcodes
+                    case 0xed:      // EDxx _opCodes
                         _status.R++;
                         Execute_ED(_memory.ReadByte(_status.PC++));
                         break;
@@ -2365,7 +2357,7 @@ namespace Speccy.Z80_CPU
                         _status.IFF1 = true;
                         _status.IFF2 = true;
                         break;
-                    case 0xFD:      // FDxx opcodes
+                    case 0xFD:      // FDxx _opCodes
                         _status.R++;
                         Execute_DDFD(_status.RegisterIY, _memory.ReadByte(_status.PC++));
                         break;
@@ -2374,7 +2366,7 @@ namespace Speccy.Z80_CPU
                         CP(_memory.ReadByte(_status.PC++));
                         break;
                     default:
-                        throw new Exception(string.Format("Internal execute error. Opcode {0} not implemented.", opcode));
+                        throw new Exception(string.Format("Internal execute error. _opCode {0} not implemented.", _status.OpCode));
 
 
                 }
@@ -2386,12 +2378,12 @@ namespace Speccy.Z80_CPU
         /// Execution of DD xx codes and FD xx codes.
         /// DD and FD prefix change a multiplexer from HL to IX (if prefix is DD) or IY (if prefix is FD)
         /// </summary>
-        /// <param name="RegisterI_">It must be IX if previous opcode was DD, IY if previous opcode was FD</param>
-        /// <param name="opcode">opcode to execute</param>
-        private void Execute_DDFD(Register RegisterI_, byte opcode)
+        /// <param name="RegisterI_">It must be IX if previous _opCode was DD, IY if previous _opCode was FD</param>
+        /// <param name="_opCode">_opCode to execute</param>
+        private void Execute_DDFD(Register RegisterI_, byte _opCode)
         {
 
-            // Opcodes are the same as base opcodes but HL is substituted with IX or IY and (HL)
+            // _opCodes are the same as base _opCodes but HL is substituted with IX or IY and (HL)
             // is substituted with (IX + d) or (IY + d).
             /*
 			
@@ -2475,7 +2467,7 @@ namespace Speccy.Z80_CPU
 			0xbc	188	10111100	 CP A,REGISTERH 
 			0xbd	189	10111101	 CP A,REGISTERL 
 			0xbe	190	10111110	 CP A,(REGISTER + d) 
-			0xcb	203	11001011	 {DD|FD}CBxx opcodes 
+			0xcb	203	11001011	 {DD|FD}CBxx _opCodes 
 			0xe1	225	11100001	 POP REGISTER 
 			0xe3	227	11100011	 EX (SP),REGISTER 
 			0xe5	229	11100101	 PUSH REGISTER 
@@ -2492,17 +2484,17 @@ namespace Speccy.Z80_CPU
             HalfRegister _I__;
             ushort Address;
 
-            if (opcode == 0x76)     // HALT
+            if (_opCode == 0x76)     // HALT
             {
                 // The first check is for HALT otherwise it could be
                 // interpreted as LD (I_ + d),(I_ + d)
                 IncreaseTStates(4);
                 _status.Halted = true;
             }
-            else if ((opcode & 0xC0) == 0x40)   // LD r,r'
+            else if ((_opCode & 0xC0) == 0x40)   // LD r,r'
             {
-                HalfRegister reg1 = GetHalfRegister((byte)(opcode >> 3));
-                HalfRegister reg2 = GetHalfRegister(opcode);
+                HalfRegister reg1 = GetHalfRegister((byte)(_opCode >> 3));
+                HalfRegister reg2 = GetHalfRegister(_opCode);
 
                 if (reg1 == null)
                 {
@@ -2535,11 +2527,11 @@ namespace Speccy.Z80_CPU
                     reg1.Value = reg2.Value;
                 }
             }
-            else if ((opcode & 0xC0) == 0x80)
+            else if ((_opCode & 0xC0) == 0x80)
             {
                 // Operation beetween accumulator and other registers
                 // Usually are identified by 10 ooo rrr where ooo is the operation and rrr is the source register
-                HalfRegister reg = GetHalfRegister(opcode);
+                HalfRegister reg = GetHalfRegister(_opCode);
                 byte _Value;
 
                 if (reg == null)
@@ -2560,7 +2552,7 @@ namespace Speccy.Z80_CPU
                         _Value = reg.Value;
                 }
 
-                switch (opcode & 0xF8)
+                switch (_opCode & 0xF8)
                 {
                     case 0x80:  // ADD A,r
                         ADD_A(_Value);
@@ -2594,7 +2586,7 @@ namespace Speccy.Z80_CPU
             else
             {
 
-                switch (opcode)
+                switch (_opCode)
                 {
                     case 0x09:      // ADD I_,BC
                         IncreaseTStates(15);
@@ -2697,7 +2689,7 @@ namespace Speccy.Z80_CPU
 
 
 
-                    case 0xCB:      // {DD|FD}CBxx opcodes
+                    case 0xCB:      // {DD|FD}CBxx _opCodes
                         {
                             Address = (ushort)(RegisterI_.w + (sbyte)_memory.ReadByte(_status.PC++));
                             Execute_DDFD_CB(Address, _memory.ReadByte(_status.PC++));
@@ -2751,14 +2743,14 @@ namespace Speccy.Z80_CPU
         /// <summary>
         /// Execution of ED xx codes
         /// </summary>
-        /// <param name="opcode">opcode to execute</param>
-        private void Execute_ED(byte opcode)
+        /// <param name="_opCode">_opCode to execute</param>
+        private void Execute_ED(byte _opCode)
         {
 
 
-            if ((opcode & 0xC7) == 0x40) // IN r,(C)
+            if ((_opCode & 0xC7) == 0x40) // IN r,(C)
             {
-                HalfRegister reg = GetHalfRegister((byte)(opcode >> 3));
+                HalfRegister reg = GetHalfRegister((byte)(_opCode >> 3));
 
                 // In this case 110 does not write in (HL) but affects only the flags
                 if (reg == null)
@@ -2767,14 +2759,14 @@ namespace Speccy.Z80_CPU
                 IncreaseTStates(12);
                 IN(reg, _status.BC);
             }
-            else if ((opcode & 0xC7) == 0x41) // OUT (C),r
+            else if ((_opCode & 0xC7) == 0x41) // OUT (C),r
             {
                 // The contents of register C are placed on the bottom half (A0 through A7) of
                 // the address bus to select the I/O device at one of 256 possible ports. The
                 // contents of Register B are placed on the top half (A8 through A15) of the
                 // address bus at this time. Then the byte contained in register r is placed on
                 // the data bus and written to the selected peripheral device.
-                HalfRegister reg = GetHalfRegister((byte)(opcode >> 3));
+                HalfRegister reg = GetHalfRegister((byte)(_opCode >> 3));
 
                 // In this case 110 outputs 0 in out port
                 if (reg == null)
@@ -2783,11 +2775,11 @@ namespace Speccy.Z80_CPU
                 IncreaseTStates(12);
                 _io.WriteByte(_status.BC, reg.Value);
             }
-            else if ((opcode & 0xC7) == 0x42) // ALU operations with HL
+            else if ((_opCode & 0xC7) == 0x42) // ALU operations with HL
             {
                 IncreaseTStates(15);
-                Register reg = GetRegister(opcode, true);
-                switch (opcode & 0x08)
+                Register reg = GetRegister(_opCode, true);
+                switch (_opCode & 0x08)
                 {
                     case 0: // SBC HL,ss
                         SBC_HL(reg.w);
@@ -2799,11 +2791,11 @@ namespace Speccy.Z80_CPU
                         throw new Exception("No no no!!!");
                 }
             }
-            else if ((opcode & 0xC7) == 0x43) // Load register from to memory address
+            else if ((_opCode & 0xC7) == 0x43) // Load register from to memory address
             {
                 IncreaseTStates(20);
-                Register reg = GetRegister(opcode, true);
-                switch (opcode & 0x08)
+                Register reg = GetRegister(_opCode, true);
+                switch (_opCode & 0x08)
                 {
                     case 0: // LD (nnnn),ss
                         LD_nndd(reg);
@@ -2819,7 +2811,7 @@ namespace Speccy.Z80_CPU
             else
             {
 
-                switch (opcode)
+                switch (_opCode)
                 {
 
 
@@ -3030,7 +3022,7 @@ namespace Speccy.Z80_CPU
                         OTDR();
                         break;
 
-                    default:    // All other opcodes are NOPD
+                    default:    // All other _opCodes are NOPD
                         IncreaseTStates(8);
                         break;
 
@@ -3043,21 +3035,21 @@ namespace Speccy.Z80_CPU
         /// <summary>
         /// Execution of CB xx codes
         /// </summary>
-        /// <param name="opcode">opcode to execute</param>
-        private void Execute_CB(byte opcode)
+        /// <param name="_opCode">_opCode to execute</param>
+        private void Execute_CB(byte _opCode)
         {
 
 
             // Operations with single byte register
             // The format is 00 ooo rrr where ooo is the operation and rrr is the register
-            HalfRegister reg = GetHalfRegister(opcode);
+            HalfRegister reg = GetHalfRegister(_opCode);
             HalfRegister _HL_ = null;
 
             // Check if the source/target is (HL)
             if (reg == null)
                 reg = _HL_ = new HalfRegister(_memory.ReadByte(_status.HL));
 
-            Execute_CB_on_reg(opcode, reg);
+            Execute_CB_on_reg(_opCode, reg);
 
             if (reg == _HL_)
             {
@@ -3079,17 +3071,17 @@ namespace Speccy.Z80_CPU
         /// Execution of DD CB xx codes or FD CB xx codes
         /// </summary>
         /// <param name="Address">Address to act on - Address = I_ + d</param>
-        /// <param name="opcode">opcode</param>
-        private void Execute_DDFD_CB(ushort Address, byte opcode)
+        /// <param name="_opCode">_opCode</param>
+        private void Execute_DDFD_CB(ushort Address, byte _opCode)
         {
-            // This is a mix of DD/FD opcodes (Normal operation but access to 
+            // This is a mix of DD/FD _opCodes (Normal operation but access to 
             // I_ register instead of HL register) and CB op codes.
             // Behaviour is a little different:
-            // if (Opcodes use B, C, D, E, H, L)  -  opcodes with rrr different from 110
+            // if (_opCodes use B, C, D, E, H, L)  -  _opCodes with rrr different from 110
             //   r = (I_ + d)
             //   execute_op r
             //   (I_ + d) = r
-            // if (Opcodes use (HL))              -  opcodes with rrr = 110
+            // if (_opCodes use (HL))              -  _opCodes with rrr = 110
             //   execute_op (I_ + d)
             //
             // if execute_op is a bit checking operation BIT n,r no assignement are done
@@ -3100,15 +3092,15 @@ namespace Speccy.Z80_CPU
 
             // Check if the operation is a bit checking operation
             // The format is 01 bbb rrr
-            if (opcode >> 6 == 0x01)
+            if (_opCode >> 6 == 0x01)
             {
                 reg = new HalfRegister();
                 IncreaseTStates(20);
             }
             else
             {
-                // Retrieve the register from opcode xxxxx rrr
-                reg = GetHalfRegister(opcode);
+                // Retrieve the register from _opCode xxxxx rrr
+                reg = GetHalfRegister(_opCode);
 
                 // Check if the source is (I_ + d) so the op will not act on any register
                 // but only on memory
@@ -3128,7 +3120,7 @@ namespace Speccy.Z80_CPU
             reg.Value = _memory.ReadByte(Address);
 
 
-            Execute_CB_on_reg(opcode, reg);
+            Execute_CB_on_reg(_opCode, reg);
 
             _memory.WriteByte(Address, reg.Value);
 
@@ -3136,16 +3128,16 @@ namespace Speccy.Z80_CPU
 
 
         /// <summary>
-        /// This is the low level function called within a CB opcode fetch
+        /// This is the low level function called within a CB _opCode fetch
         /// (single byte or DD CB or FD CB)
         /// It must be called after the execution unit has determined on
         /// wich register act
         /// </summary>
-        /// <param name="opcode">opcode</param>
+        /// <param name="_opCode">_opCode</param>
         /// <param name="reg">Register to act on</param>
-        private void Execute_CB_on_reg(byte opcode, HalfRegister reg)
+        private void Execute_CB_on_reg(byte _opCode, HalfRegister reg)
         {
-            switch (opcode >> 3)
+            switch (_opCode >> 3)
             {
                 case 0: // RLC r
                     RLC(reg);
@@ -3178,9 +3170,9 @@ namespace Speccy.Z80_CPU
                     // oo is the operation (01 BIT, 10 RES, 11 SET)
                     // bbb is the bit number
                     // rrr is the register
-                    byte bit = (byte)((opcode >> 3) & 0x07);
+                    byte bit = (byte)((_opCode >> 3) & 0x07);
 
-                    switch (opcode >> 6)
+                    switch (_opCode >> 6)
                     {
                         case 1: // BIT n,r
                             if (bit == 7)
