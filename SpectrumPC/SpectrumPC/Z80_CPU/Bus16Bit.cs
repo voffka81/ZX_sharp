@@ -72,7 +72,7 @@ namespace Speccy.Z80_CPU
                     }
 
                     ear = _tapeDevice.EarValues[tapeposition];
-                    _beeper.ProcessEarBitValue(false, ear.Ear);
+                    //_beeper.ProcessEarBitValue(false, ear.Ear);
                     if (ear != null)
                     {
                         if (ear.Pulse == PulseTypeEnum.Stop)

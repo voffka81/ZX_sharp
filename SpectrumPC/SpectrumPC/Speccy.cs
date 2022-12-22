@@ -62,7 +62,7 @@ namespace Speccy
         {
             _displayUnit.BorderColor = (_IOdataBus as Bus16Bit).BorderColor;
             _beeperDevice.Reset();
-            while (_z80.TicksCount < _z80.event_next_event)
+            while (_z80.TicksCount < _z80.NextEvent)
             {
                 _beeperDevice.cpuTacts = _z80.TicksCount;
                 _tapeDevice.AddTStates(_z80.TStateValue);
@@ -80,7 +80,6 @@ namespace Speccy
                 _displayUnit.ReverseFlash();
 
             }
-
             AudioSamples = _beeperDevice.AudioSamples;
         }
 

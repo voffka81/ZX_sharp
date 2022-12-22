@@ -9,6 +9,9 @@ namespace Speccy.Z80_CPU
     public class Z80CPU
     {
         public Status DebugInfo => _status;
+        public int NextEvent => _next_event;
+
+        private int _next_event = 69888;
 
         private IBus16Bit _memory;
         private IPorts _io;
@@ -18,9 +21,11 @@ namespace Speccy.Z80_CPU
         private int tstates;
 
         // By default fetching won't be stopped
-        private int _StatementsToFetch = -1;
+        private int _statementsToFetch = -1;
 
+        public int TicksCount => tstates;
 
+        public bool IsInterruptBlocked => false;
         /// <summary>
         /// Handler of a fetch event (not a standard M$ event declaration but...)
         /// </summary>
@@ -1810,21 +1815,7 @@ namespace Speccy.Z80_CPU
         /// Number of statements to fetch before returning (-1) if no return at all.
         /// It should be used for debug purpose (set to -1 after each fetch).
         /// </summary>
-        public int StatementsToFetch
-        {
-            get
-            {
-                return _StatementsToFetch;
-            }
-            set
-            {
-                _StatementsToFetch = value;
-            }
-        }
 
-        public int TicksCount => tstates;
-
-        public bool IsInterruptBlocked => false;
 
 
 
@@ -1836,16 +1827,16 @@ namespace Speccy.Z80_CPU
             ushort Address;
 
             // Check if Statement to fetch must be handled
-            if (StatementsToFetch >= 0)
+            if (_statementsToFetch >= 0)
             {
-                if (StatementsToFetch == 0)
+                if (_statementsToFetch == 0)
                 {
                     // Disable next break (just in case the main program forget to do it)
-                    StatementsToFetch = -1;
+                    _statementsToFetch = -1;
                     return;
                 }
                 else
-                    StatementsToFetch--;
+                    _statementsToFetch--;
             }
 
             // Check if someone is registered to receive Fetch event and eventually raise it
@@ -3194,7 +3185,7 @@ namespace Speccy.Z80_CPU
             }
         }
 
-        public int event_next_event = 69888;
+
         int tape_load_trap() { return 0; }
         int tape_save_trap() { return 0; }
         public int TStateValue { get; private set; }
@@ -3203,7 +3194,7 @@ namespace Speccy.Z80_CPU
 
         public void ResetTStates()
         {
-            tstates -= event_next_event;
+            tstates -= _next_event;
         }
 
         private void IncreaseTStates(int value)
