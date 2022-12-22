@@ -1,15 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using PropertyChanged;
 
 namespace Speccy.Z80_CPU
 {
     /// <summary>
 	/// Z80 Status
 	/// </summary>
-	public class Status
+	[AddINotifyPropertyChangedInterface]
+    public class Status
     {
 
 
@@ -326,7 +323,9 @@ namespace Speccy.Z80_CPU
         /// <summary>
         /// Access to SP register as word
         /// </summary>
+
         public ushort SP
+
         {
             get
             {

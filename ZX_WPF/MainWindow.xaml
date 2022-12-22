@@ -3,15 +3,22 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:ZX_WPF"
         mc:Ignorable="d"
-        Title="MainWindow">
+        Title="MainWindow"
+        xmlns:local="clr-namespace:ZX_sharp">
+    <Window.DataContext>
+        <local:MainWindowViewModel/>
+    </Window.DataContext>
     <Grid x:Name="MainGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="35"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
-        <StackPanel Orientation="Horizontal" >
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition   Width="*"/>
+            <ColumnDefinition   Width="150"/>
+        </Grid.ColumnDefinitions>
+        <StackPanel  Orientation="Horizontal" Grid.ColumnSpan="2" >
             <Rectangle x:Name="keyIndicator"  Width="10" Height="10" Fill="Red" Margin="5 0 0 5"></Rectangle>
             <Button Name="btnOpenFile" Height="30" Width="70" Click="btnOpenFile_Click" Margin="5 0 0 5">Load image</Button>
             <Button Name="btnPlayTape" Height="30" Width="70" Click="btnPlayTape_Click" Margin="5 0 0 5">Play Tape</Button>
@@ -19,6 +26,20 @@
             <Button Name="btnNothing" Height="30" Width="70" Margin="5 0 0 5">N</Button>
             <Button Name="btnReset" Height="30" Width="70" Click="btnReset_Click" Margin="50 0 0 5">Reset PC</Button>
         </StackPanel>
-        <Image Grid.Row="2" x:Name="screenImage" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ></Image>
+        <Image Grid.Row="2" x:Name="screenImage" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Source="{Binding Screen}"></Image>
+        <Grid Grid.Row="2" Grid.Column="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition   Width="*"/>
+                <ColumnDefinition   Width="*"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="SP=>"/>
+                <TextBlock Text="{Binding Speccy.CpuDebugInfo.SP, StringFormat={}{0:x}}"/>
+            </StackPanel>
+        </Grid>
     </Grid>
 </Window>
