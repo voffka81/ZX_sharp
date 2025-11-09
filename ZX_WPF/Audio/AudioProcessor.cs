@@ -14,7 +14,7 @@ namespace ZX_WPF.Audio
         /// <summary>
         /// The AudioPlaybackEngine sample rate
         /// </summary>
-        private int SampleRate = 44100;
+        private int SampleRate = 35000;
         /// <summary>
         /// Stereo Output
         /// </summary>
@@ -60,7 +60,7 @@ namespace ZX_WPF.Audio
         }
         private ISampleProvider Ensure44100(ISampleProvider input)
         {
-            var resampler = new WdlResamplingSampleProvider(input, 44100);
+            var resampler = new WdlResamplingSampleProvider(input, SampleRate);
             return resampler.ToStereo();
         }
     }

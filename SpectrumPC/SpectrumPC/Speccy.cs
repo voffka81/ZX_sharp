@@ -58,15 +58,15 @@ namespace Speccy
         }
 
         int _flashCount = 0;
+       
         public void ExecuteCycle()
         {
             _displayUnit.BorderColor = (_IOdataBus as Bus16Bit).BorderColor;
-            _beeperDevice.Reset();
             while (_z80.TicksCount < _z80.NextEvent)
             {
-                _beeperDevice.cpuTacts = _z80.TicksCount;
-                _tapeDevice.AddTStates(_z80.TStateValue);
+                _beeperDevice.CpuTacts = _z80.TicksCount;
                 _z80.Cycle();
+                _tapeDevice.AddTStates(_z80.TStateValue);
             }
 
             _z80.ResetTStates();
@@ -80,6 +80,7 @@ namespace Speccy
                 _displayUnit.ReverseFlash();
 
             }
+            _beeperDevice.FinalizeFrame(); // Fill remaining audio samples for the frame
             AudioSamples = _beeperDevice.AudioSamples;
         }
 

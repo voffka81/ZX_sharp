@@ -128,8 +128,6 @@ namespace Speccy.Z80_CPU
             _status.RegisterSP.w = z80.SP;
             _status.IM = z80.IM;
             _status.PC = z80.PC;
-            //borderColour = z80.BORDER;
-            //Issue2Keyboard = z80.ISSUE2;
 
             for (int f = 0; f < 49152; f++)
             {
@@ -145,7 +143,6 @@ namespace Speccy.Z80_CPU
             // Check if the interrupts are enabled
             if (_status.IFF1)
             {
-
                 // The Z80 is no more halted
                 _status.Halted = false;
 

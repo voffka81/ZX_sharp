@@ -4,17 +4,16 @@
     {
         public float[] AudioSamples { get; private set; }
         public bool LastEarBit { get; set; }
-        public long cpuTacts;
+        public long CpuTacts { get; set; }
         public int NextSampleIndex { get; private set; }
         int LastSampleTact = 0;
         private long _frameBegins;
-        int _frameTacts = 699;
-        int _tactsPerSample = 100;
+        int _frameTacts = 700; //700 samples per frame for35000Hz/50Hz
+        int _tactsPerSample = 99; //69888 /700 ≈99.84, so99 is closer
 
         public Beeper()
         {
             Initialize();
-
         }
 
         public void Initialize()
@@ -44,8 +43,7 @@
 
         public void Reset()
         {
-            _frameBegins = cpuTacts;
-            LastEarBit = false;
+
             Initialize();
         }
 
@@ -53,17 +51,41 @@
         {
             var nextSampleOffset = LastSampleTact;
 
-            if (cpuTacts > _frameBegins - _frameTacts)
+            // Work with a snapshot of cpuTacts to avoid races
+            long currentCpuTacts = CpuTacts;
+
+            // Ensure cpuTacts does not exceed the frame end
+            if (currentCpuTacts > _frameBegins + _frameTacts)
             {
-                cpuTacts = _frameBegins - _frameTacts;
+                currentCpuTacts = _frameBegins + _frameTacts;
             }
 
-            while (nextSampleOffset < cpuTacts)
+            // Fill samples until we catch up or until buffer is full
+            while (nextSampleOffset < currentCpuTacts && NextSampleIndex < AudioSamples.Length)
             {
                 AudioSamples[NextSampleIndex++] = LastEarBit ? 1.0f : 0;
                 nextSampleOffset += _tactsPerSample;
             }
+
+            // Clamp NextSampleIndex to valid range
+            if (NextSampleIndex >= AudioSamples.Length)
+            {
+                NextSampleIndex = AudioSamples.Length - 1;
+            }
+
             LastSampleTact = nextSampleOffset;
+        }
+
+        // --- Added: Fill remaining samples at the end of the frame
+        public void FinalizeFrame()
+        {
+            while (NextSampleIndex < AudioSamples.Length)
+            {
+                AudioSamples[NextSampleIndex++] = LastEarBit ? 1.0f : 0f;
+            }
+            LastSampleTact = 0;
+            NextSampleIndex = 0;
+            _frameBegins = CpuTacts;
         }
     }
 }
