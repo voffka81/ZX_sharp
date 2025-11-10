@@ -1,7 +1,7 @@
 ﻿using Speccy.Filetypes;
+using Speccy.Z80_CPU;
 
-
-namespace Speccy.Z80_CPU
+namespace SpectrumPC.Z80_CPU
 {
     /// <summary>
     /// Class rappresenting a system based on Z80
@@ -78,7 +78,7 @@ namespace Speccy.Z80_CPU
                     parity ^= (byte)(j & 1);
                     j >>= 1;
                 }
-                LookupTable_parity[i] = (parity != 0 ? (byte)0 : FlagRegisterDefinition.P);
+                LookupTable_parity[i] = parity != 0 ? (byte)0 : FlagRegisterDefinition.P;
                 LookupTable_sz53p[i] = (byte)(LookupTable_sz53[i] | LookupTable_parity[i]);
             }
 
@@ -167,7 +167,7 @@ namespace Speccy.Z80_CPU
                         IncreaseTStates(13);
                         break;
                     case 2:
-                        ushort InterruptTableAddress = (ushort)((_status.I << 8) | 0xFF);
+                        ushort InterruptTableAddress = (ushort)(_status.I << 8 | 0xFF);
                         _status.PC = _memory.ReadWord(InterruptTableAddress);
                         IncreaseTStates(19);
                         break;
@@ -193,7 +193,7 @@ namespace Speccy.Z80_CPU
         /// </summary>
         /// <param name="_opCode">_opCode</param>
         /// <returns>The half register or null if _opCode is 110 (it is the ID for (HL))</returns>
-        private HalfRegister GetHalfRegister(byte _opCode)
+        private HalfRegister? GetHalfRegister(byte _opCode)
         {
             switch (_opCode & 0x07)
             {
@@ -269,7 +269,7 @@ namespace Speccy.Z80_CPU
             byte Flag;
 
             // Find the right flag and the condition
-            switch ((_opCode >> 3) & 0x07)
+            switch (_opCode >> 3 & 0x07)
             {
                 case 0:
                     Not = true;
@@ -305,9 +305,9 @@ namespace Speccy.Z80_CPU
 
             // Check flag and condition
             if (Not)
-                return ((_status.F & Flag) == 0);
+                return (_status.F & Flag) == 0;
             else
-                return ((_status.F & Flag) != 0);
+                return (_status.F & Flag) != 0;
 
 
         }
@@ -417,7 +417,7 @@ namespace Speccy.Z80_CPU
         {
             ushort result = (ushort)(_status.A + op + ((_status.F & FlagRegisterDefinition.C) != 0 ? 1 : 0));
             // Prepare the bits to perform the lookup
-            byte lookup = (byte)(((_status.A & 0x88) >> 3) | ((op & 0x88) >> 2) | ((result & 0x88) >> 1));
+            byte lookup = (byte)((_status.A & 0x88) >> 3 | (op & 0x88) >> 2 | (result & 0x88) >> 1);
             _status.A = (byte)result;
 
             _status.F = (byte)
@@ -451,7 +451,7 @@ namespace Speccy.Z80_CPU
             _status.F = (byte)
                 (((result & 0x10000) != 0 ? FlagRegisterDefinition.C : (byte)0) |
                 LookupTable_overflow_add[lookup >> 4] |
-                (_status.H & (FlagRegisterDefinition._3 | FlagRegisterDefinition._5 | FlagRegisterDefinition.S)) |
+                _status.H & (FlagRegisterDefinition._3 | FlagRegisterDefinition._5 | FlagRegisterDefinition.S) |
                 LookupTable_halfcarry_add[lookup & 0x07] |
                 (_status.HL == 0 ? (byte)0 : FlagRegisterDefinition.Z));
         }
@@ -471,7 +471,7 @@ namespace Speccy.Z80_CPU
         private void ADD_A(byte op)
         {
             ushort result = (ushort)(_status.A + op);
-            byte lookup = (byte)(((_status.A & 0x88) >> 3) | (((op) & 0x88) >> 2) | ((result & 0x88) >> 1));
+            byte lookup = (byte)((_status.A & 0x88) >> 3 | (op & 0x88) >> 2 | (result & 0x88) >> 1);
             _status.A = (byte)result;
             _status.F = (byte)
                 (((result & 0x100) != 0 ? FlagRegisterDefinition.C : (byte)0) |
@@ -503,9 +503,9 @@ namespace Speccy.Z80_CPU
                 (byte)((result & 0x0800) >> 9));
             op1.w = (ushort)result;
             _status.F = (byte)(
-                (_status.F & (FlagRegisterDefinition.V | FlagRegisterDefinition.Z | FlagRegisterDefinition.S)) |
+                _status.F & (FlagRegisterDefinition.V | FlagRegisterDefinition.Z | FlagRegisterDefinition.S) |
                 ((result & 0x10000) != 0 ? FlagRegisterDefinition.C : (byte)0) |
-                (byte)((result >> 8) & (FlagRegisterDefinition._3 | FlagRegisterDefinition._5)) |
+                (byte)(result >> 8 & (FlagRegisterDefinition._3 | FlagRegisterDefinition._5)) |
                 LookupTable_halfcarry_add[lookup]);
         }
 
@@ -524,10 +524,10 @@ namespace Speccy.Z80_CPU
         private void BIT(byte bit, byte op)
         {
             _status.F = (byte)(
-                (_status.F & FlagRegisterDefinition.C) |
+                _status.F & FlagRegisterDefinition.C |
                 FlagRegisterDefinition.H |
-                (op & (FlagRegisterDefinition._3 | FlagRegisterDefinition._5)) |
-                ((op & (0x01 << bit)) != 0 ? 0 : (FlagRegisterDefinition.P | FlagRegisterDefinition.Z)));
+                op & (FlagRegisterDefinition._3 | FlagRegisterDefinition._5) |
+                ((op & 0x01 << bit) != 0 ? 0 : FlagRegisterDefinition.P | FlagRegisterDefinition.Z));
         }
 
 
@@ -545,9 +545,9 @@ namespace Speccy.Z80_CPU
         private void BIT7(byte op)
         {
             _status.F = (byte)(
-                (_status.F & FlagRegisterDefinition.C) |
+                _status.F & FlagRegisterDefinition.C |
                 FlagRegisterDefinition.H |
-                (op & (FlagRegisterDefinition._3 | FlagRegisterDefinition._5)) |
+                op & (FlagRegisterDefinition._3 | FlagRegisterDefinition._5) |
                 ((op & 0x80) != 0 ? FlagRegisterDefinition.S : (byte)(FlagRegisterDefinition.P | FlagRegisterDefinition.Z)));
         }
 
@@ -587,9 +587,9 @@ namespace Speccy.Z80_CPU
         private void CCF()
         {
             _status.F = (byte)(
-                (_status.F & (FlagRegisterDefinition.P | FlagRegisterDefinition.Z | FlagRegisterDefinition.S)) |
+                _status.F & (FlagRegisterDefinition.P | FlagRegisterDefinition.Z | FlagRegisterDefinition.S) |
                 ((_status.F & FlagRegisterDefinition.C) != 0 ? FlagRegisterDefinition.H : FlagRegisterDefinition.C) |
-                (_status.A & (FlagRegisterDefinition._3 | FlagRegisterDefinition._5)));
+                _status.A & (FlagRegisterDefinition._3 | FlagRegisterDefinition._5));
         }
 
 
@@ -609,14 +609,14 @@ namespace Speccy.Z80_CPU
         private void CP(byte op)
         {
             ushort result = (ushort)(_status.A - op);
-            byte lookup = (byte)((((_status.A & 0x88) >> 3) | ((op & 0x88) >> 2) | ((result & 0x88) >> 1)));
+            byte lookup = (byte)((_status.A & 0x88) >> 3 | (op & 0x88) >> 2 | (result & 0x88) >> 1);
             _status.F = (byte)(
-                ((result & 0x100) != 0 ? FlagRegisterDefinition.C : (result != 0 ? (byte)0 : FlagRegisterDefinition.Z)) |
+                ((result & 0x100) != 0 ? FlagRegisterDefinition.C : result != 0 ? (byte)0 : FlagRegisterDefinition.Z) |
                 FlagRegisterDefinition.N |
                 LookupTable_halfcarry_sub[lookup & 0x07] |
                 LookupTable_overflow_sub[lookup >> 4] |
-                (op & (FlagRegisterDefinition._3 | FlagRegisterDefinition._5)) |
-                (result & FlagRegisterDefinition.S));
+                op & (FlagRegisterDefinition._3 | FlagRegisterDefinition._5) |
+                result & FlagRegisterDefinition.S);
         }
 
 
@@ -624,7 +624,7 @@ namespace Speccy.Z80_CPU
         /// <summary>
         /// ???????????????????????????????????????????????????????????
         /// </summary>
-        private delegate void instruction(byte target);
+        private delegate void Instruction(byte target);
         /* Macro for the {DD,FD} CB dd xx rotate/shift instructions */
         /// <summary>
         /// 
@@ -633,7 +633,7 @@ namespace Speccy.Z80_CPU
         /// <param name="target"></param>
         /// <param name="instruction"></param>
         /// <param name="tempaddr"></param>
-        private void DDFDCB_ROTATESHIFT(byte time, byte target, instruction instruction, ushort tempaddr)
+        private void DDFDCB_ROTATESHIFT(byte time, byte target, Instruction instruction, ushort tempaddr)
         {
             IncreaseTStates(time);
             target = _memory.ReadByte(tempaddr);
@@ -758,12 +758,12 @@ namespace Speccy.Z80_CPU
         {
             byte _b = _memory.ReadByte(_status.HL);
             byte result = (byte)(_status.A - _b);
-            byte lookup = (byte)(((_status.A & 0x08) >> 3) | (((_b) & 0x08) >> 2) | ((result & 0x08) >> 1));
+            byte lookup = (byte)((_status.A & 0x08) >> 3 | (_b & 0x08) >> 2 | (result & 0x08) >> 1);
             _status.BC--;
-            _status.F = (byte)((_status.F & FlagRegisterDefinition.C) | (_status.BC != 0 ? (byte)(FlagRegisterDefinition.V | FlagRegisterDefinition.N) : FlagRegisterDefinition.N) | LookupTable_halfcarry_sub[lookup] | (result != 0 ? (byte)0 : FlagRegisterDefinition.Z) | (result & FlagRegisterDefinition.S));
+            _status.F = (byte)(_status.F & FlagRegisterDefinition.C | (_status.BC != 0 ? (byte)(FlagRegisterDefinition.V | FlagRegisterDefinition.N) : FlagRegisterDefinition.N) | LookupTable_halfcarry_sub[lookup] | (result != 0 ? (byte)0 : FlagRegisterDefinition.Z) | result & FlagRegisterDefinition.S);
             if ((_status.F & FlagRegisterDefinition.H) != 0)
                 result--;
-            _status.F |= (byte)((result & FlagRegisterDefinition._3) | ((result & 0x02) != 0 ? FlagRegisterDefinition._5 : (byte)0));
+            _status.F |= (byte)(result & FlagRegisterDefinition._3 | ((result & 0x02) != 0 ? FlagRegisterDefinition._5 : (byte)0));
         }
 
 
@@ -781,7 +781,7 @@ namespace Speccy.Z80_CPU
         private void CPL()
         {
             _status.A ^= 0xFF;
-            _status.F = (byte)((_status.F & (FlagRegisterDefinition.C | FlagRegisterDefinition.P | FlagRegisterDefinition.Z | FlagRegisterDefinition.S)) | (_status.A & (FlagRegisterDefinition._3 | FlagRegisterDefinition._5)) | (FlagRegisterDefinition.N | FlagRegisterDefinition.H));
+            _status.F = (byte)(_status.F & (FlagRegisterDefinition.C | FlagRegisterDefinition.P | FlagRegisterDefinition.Z | FlagRegisterDefinition.S) | _status.A & (FlagRegisterDefinition._3 | FlagRegisterDefinition._5) | FlagRegisterDefinition.N | FlagRegisterDefinition.H);
         }
 
 
@@ -794,9 +794,9 @@ namespace Speccy.Z80_CPU
         {
             byte add = 0;
             byte carry = (byte)(_status.F & FlagRegisterDefinition.C);
-            if ((_status.F & FlagRegisterDefinition.H) != 0 || ((_status.A & 0x0F) > 9))
+            if ((_status.F & FlagRegisterDefinition.H) != 0 || (_status.A & 0x0F) > 9)
                 add = 6;
-            if (carry != 0 || (_status.A > 0x9F))
+            if (carry != 0 || _status.A > 0x9F)
                 add |= 0x60;
             if (_status.A > 0x99)
                 carry = 1;
@@ -806,11 +806,11 @@ namespace Speccy.Z80_CPU
             }
             else
             {
-                if ((_status.A > 0x90) && ((_status.A & 0x0F) > 9))
+                if (_status.A > 0x90 && (_status.A & 0x0F) > 9)
                     add |= 0x60;
                 ADD_A(add);
             }
-            _status.F = (byte)((_status.F & ~(FlagRegisterDefinition.C | FlagRegisterDefinition.P)) | carry | LookupTable_parity[_status.A]);
+            _status.F = (byte)(_status.F & ~(FlagRegisterDefinition.C | FlagRegisterDefinition.P) | carry | LookupTable_parity[_status.A]);
         }
 
         /// <summary>
@@ -825,7 +825,7 @@ namespace Speccy.Z80_CPU
         /// <param name="op">The operand</param>
         private void DEC(HalfRegister op)
         {
-            _status.F = (byte)((_status.F & FlagRegisterDefinition.C) | ((op.Value & 0x0F) != 0 ? (byte)0 : FlagRegisterDefinition.H) | FlagRegisterDefinition.N);
+            _status.F = (byte)(_status.F & FlagRegisterDefinition.C | ((op.Value & 0x0F) != 0 ? (byte)0 : FlagRegisterDefinition.H) | FlagRegisterDefinition.N);
             op.Value--;
             _status.F |= (byte)((op.Value == 0x79 ? FlagRegisterDefinition.V : (byte)0) | LookupTable_sz53[op.Value]);
         }
@@ -851,7 +851,7 @@ namespace Speccy.Z80_CPU
         private void IN(HalfRegister reg, ushort port)
         {
             reg.Value = _io.ReadByte(port);
-            _status.F = (byte)((_status.F & FlagRegisterDefinition.C) | LookupTable_sz53p[reg.Value]);
+            _status.F = (byte)(_status.F & FlagRegisterDefinition.C | LookupTable_sz53p[reg.Value]);
         }
 
 
@@ -870,7 +870,7 @@ namespace Speccy.Z80_CPU
         {
             op.Value++;
             _status.F = (byte)(
-                (_status.F & FlagRegisterDefinition.C) |
+                _status.F & FlagRegisterDefinition.C |
                 (op.Value == 0x80 ? FlagRegisterDefinition.V : (byte)0) |
                 ((op.Value & 0x0F) != 0 ? (byte)0 : FlagRegisterDefinition.H) |
                 (op.Value != 0 ? (byte)0 : FlagRegisterDefinition.Z) |
@@ -1147,7 +1147,7 @@ namespace Speccy.Z80_CPU
             _memory.WriteByte(_status.DE, _b);
             _status.BC--;
             _b += _status.A;
-            _status.F = (byte)((_status.F & (FlagRegisterDefinition.C | FlagRegisterDefinition.Z | FlagRegisterDefinition.S)) | (_status.BC != 0 ? FlagRegisterDefinition.V : (byte)0) | (_b & FlagRegisterDefinition._3) | ((_b & 0x02) != 0 ? FlagRegisterDefinition._5 : (byte)0));
+            _status.F = (byte)(_status.F & (FlagRegisterDefinition.C | FlagRegisterDefinition.Z | FlagRegisterDefinition.S) | (_status.BC != 0 ? FlagRegisterDefinition.V : (byte)0) | _b & FlagRegisterDefinition._3 | ((_b & 0x02) != 0 ? FlagRegisterDefinition._5 : (byte)0));
         }
 
 
@@ -1193,7 +1193,7 @@ namespace Speccy.Z80_CPU
         /// </summary>
         private void JR()
         {
-            _status.PC = (ushort)((int)_status.PC + (sbyte)_memory.ReadByte(_status.PC));
+            _status.PC = (ushort)(_status.PC + (sbyte)_memory.ReadByte(_status.PC));
         }
 
         /// <summary>
@@ -1400,8 +1400,8 @@ namespace Speccy.Z80_CPU
         private void RL(HalfRegister op)
         {
             byte _op = op.Value;
-            op.Value = (byte)((op.Value << 1) | (_status.F & FlagRegisterDefinition.C));
-            _status.F = (byte)((_op >> 7) | LookupTable_sz53p[op.Value]);
+            op.Value = (byte)(op.Value << 1 | _status.F & FlagRegisterDefinition.C);
+            _status.F = (byte)(_op >> 7 | LookupTable_sz53p[op.Value]);
         }
 
         /// <summary>
@@ -1419,11 +1419,11 @@ namespace Speccy.Z80_CPU
         private void RLA()
         {
             byte _A = _status.A;
-            _status.A = (byte)((_status.A << 1) | (_status.F & FlagRegisterDefinition.C));
+            _status.A = (byte)(_status.A << 1 | _status.F & FlagRegisterDefinition.C);
             _status.F = (byte)(
-                (_status.F & (FlagRegisterDefinition.P | FlagRegisterDefinition.Z | FlagRegisterDefinition.S)) |
-                (_status.A & (FlagRegisterDefinition._3 | FlagRegisterDefinition._5)) |
-                (_A >> 7));
+                _status.F & (FlagRegisterDefinition.P | FlagRegisterDefinition.Z | FlagRegisterDefinition.S) |
+                _status.A & (FlagRegisterDefinition._3 | FlagRegisterDefinition._5) |
+                _A >> 7);
         }
 
         /// <summary>
@@ -1440,10 +1440,10 @@ namespace Speccy.Z80_CPU
         /// </summary>
         private void RLCA()
         {
-            _status.A = (byte)((_status.A << 1) | (_status.A >> 7));
+            _status.A = (byte)(_status.A << 1 | _status.A >> 7);
             _status.F = (byte)(
-                (_status.F & (FlagRegisterDefinition.P | FlagRegisterDefinition.Z | FlagRegisterDefinition.S)) |
-                (_status.A & (FlagRegisterDefinition.C | FlagRegisterDefinition._3 | FlagRegisterDefinition._5)));
+                _status.F & (FlagRegisterDefinition.P | FlagRegisterDefinition.Z | FlagRegisterDefinition.S) |
+                _status.A & (FlagRegisterDefinition.C | FlagRegisterDefinition._3 | FlagRegisterDefinition._5));
         }
 
 
@@ -1461,9 +1461,9 @@ namespace Speccy.Z80_CPU
         /// <param name="op"></param>
         private void RLC(HalfRegister op)
         {
-            op.Value = (byte)((op.Value << 1) | (op.Value >> 7));
+            op.Value = (byte)(op.Value << 1 | op.Value >> 7);
             _status.F = (byte)(
-                (op.Value & FlagRegisterDefinition.C) |
+                op.Value & FlagRegisterDefinition.C |
                 LookupTable_sz53p[op.Value]);
         }
 
@@ -1489,9 +1489,9 @@ namespace Speccy.Z80_CPU
         private void RLD()
         {
             byte _b = _memory.ReadByte(_status.HL);
-            _memory.WriteByte(_status.HL, (byte)((_b << 4) | (_status.A & 0x0F)));
-            _status.A = (byte)((_status.A & 0xF0) | (_b >> 4));
-            _status.F = (byte)((_status.F & FlagRegisterDefinition.C) | LookupTable_sz53p[_status.A]);
+            _memory.WriteByte(_status.HL, (byte)(_b << 4 | _status.A & 0x0F));
+            _status.A = (byte)(_status.A & 0xF0 | _b >> 4);
+            _status.F = (byte)(_status.F & FlagRegisterDefinition.C | LookupTable_sz53p[_status.A]);
         }
 
 
@@ -1512,9 +1512,9 @@ namespace Speccy.Z80_CPU
         private void RR(HalfRegister op)
         {
             byte _op = op.Value;
-            op.Value = (byte)((op.Value >> 1) | (_status.F << 7));
+            op.Value = (byte)(op.Value >> 1 | _status.F << 7);
             _status.F = (byte)(
-                (_op & FlagRegisterDefinition.C) |
+                _op & FlagRegisterDefinition.C |
                 LookupTable_sz53p[op.Value]);
         }
 
@@ -1533,11 +1533,11 @@ namespace Speccy.Z80_CPU
         private void RRA()
         {
             byte _A = _status.A;
-            _status.A = (byte)((_status.A >> 1) | (_status.F << 7));
+            _status.A = (byte)(_status.A >> 1 | _status.F << 7);
             _status.F = (byte)(
-                (_status.F & (FlagRegisterDefinition.P | FlagRegisterDefinition.Z | FlagRegisterDefinition.S)) |
-                (_status.A & (FlagRegisterDefinition._3 | FlagRegisterDefinition._5)) |
-                (_A & FlagRegisterDefinition.C));
+                _status.F & (FlagRegisterDefinition.P | FlagRegisterDefinition.Z | FlagRegisterDefinition.S) |
+                _status.A & (FlagRegisterDefinition._3 | FlagRegisterDefinition._5) |
+                _A & FlagRegisterDefinition.C);
         }
 
 
@@ -1557,7 +1557,7 @@ namespace Speccy.Z80_CPU
         private void RRC(HalfRegister op)
         {
             _status.F = (byte)(op.Value & FlagRegisterDefinition.C);
-            op.Value = (byte)((op.Value >> 1) | (op.Value << 7));
+            op.Value = (byte)(op.Value >> 1 | op.Value << 7);
             _status.F |= LookupTable_sz53p[op.Value];
         }
 
@@ -1575,8 +1575,8 @@ namespace Speccy.Z80_CPU
         /// </summary>
         private void RRCA()
         {
-            _status.F = (byte)((_status.F & (FlagRegisterDefinition.P | FlagRegisterDefinition.Z | FlagRegisterDefinition.S)) | (_status.A & FlagRegisterDefinition.C));
-            _status.A = (byte)((_status.A >> 1) | (_status.A << 7));
+            _status.F = (byte)(_status.F & (FlagRegisterDefinition.P | FlagRegisterDefinition.Z | FlagRegisterDefinition.S) | _status.A & FlagRegisterDefinition.C);
+            _status.A = (byte)(_status.A >> 1 | _status.A << 7);
             _status.F |= (byte)(_status.A & (FlagRegisterDefinition._3 | FlagRegisterDefinition._5));
         }
 
@@ -1602,9 +1602,9 @@ namespace Speccy.Z80_CPU
         private void RRD()
         {
             byte _b = _memory.ReadByte(_status.HL);
-            _memory.WriteByte(_status.HL, (byte)((_status.A << 4) | (_b >> 4)));
-            _status.A = (byte)((_status.A & 0xF0) | (_b & 0x0F));
-            _status.F = (byte)((_status.F & FlagRegisterDefinition.C) | LookupTable_sz53p[_status.A]);
+            _memory.WriteByte(_status.HL, (byte)(_status.A << 4 | _b >> 4));
+            _status.A = (byte)(_status.A & 0xF0 | _b & 0x0F);
+            _status.F = (byte)(_status.F & FlagRegisterDefinition.C | LookupTable_sz53p[_status.A]);
         }
 
 
@@ -1655,7 +1655,7 @@ namespace Speccy.Z80_CPU
         private void SBC_A(byte op)
         {
             ushort result = (ushort)(_status.A - op - (_status.F & FlagRegisterDefinition.C));
-            byte lookup = (byte)(((_status.A & 0x88) >> 3) | ((op & 0x88) >> 2) | ((result & 0x88) >> 1));
+            byte lookup = (byte)((_status.A & 0x88) >> 3 | (op & 0x88) >> 2 | (result & 0x88) >> 1);
             _status.A = (byte)result;
             _status.F = (byte)(((result & 0x100) != 0 ? FlagRegisterDefinition.C : (byte)0) | FlagRegisterDefinition.N | LookupTable_halfcarry_sub[lookup & 0x07] | LookupTable_overflow_sub[lookup >> 4] | LookupTable_sz53[_status.A]);
         }
@@ -1678,7 +1678,7 @@ namespace Speccy.Z80_CPU
             uint result = (uint)(_status.HL - op - ((_status.F & FlagRegisterDefinition.C) != 0 ? 1 : 0));
             byte lookup = (byte)((byte)((_status.HL & 0x8800) >> 11) | (byte)((op & 0x8800) >> 10) | (byte)((result & 0x8800) >> 9));
             _status.HL = (ushort)result;
-            _status.F = (byte)(((result & 0x10000) != 0 ? FlagRegisterDefinition.C : (byte)0) | FlagRegisterDefinition.N | LookupTable_overflow_sub[lookup >> 4] | (_status.H & (FlagRegisterDefinition._3 | FlagRegisterDefinition._5 | FlagRegisterDefinition.S)) | LookupTable_halfcarry_sub[lookup & 0x07] | (_status.HL != 0 ? (byte)0 : FlagRegisterDefinition.Z));
+            _status.F = (byte)(((result & 0x10000) != 0 ? FlagRegisterDefinition.C : (byte)0) | FlagRegisterDefinition.N | LookupTable_overflow_sub[lookup >> 4] | _status.H & (FlagRegisterDefinition._3 | FlagRegisterDefinition._5 | FlagRegisterDefinition.S) | LookupTable_halfcarry_sub[lookup & 0x07] | (_status.HL != 0 ? (byte)0 : FlagRegisterDefinition.Z));
         }
 
         /// <summary>
@@ -1717,7 +1717,7 @@ namespace Speccy.Z80_CPU
         private void SLL(HalfRegister op)
         {
             _status.F = (byte)(op.Value >> 7);
-            op.Value = (byte)((op.Value << 1) | 0x01);
+            op.Value = (byte)(op.Value << 1 | 0x01);
             _status.F |= LookupTable_sz53p[op.Value];
         }
 
@@ -1737,7 +1737,7 @@ namespace Speccy.Z80_CPU
         private void SRA(HalfRegister op)
         {
             _status.F = (byte)(op.Value & FlagRegisterDefinition.C);
-            op.Value = (byte)((op.Value & 0x80) | (op.Value >> 1));
+            op.Value = (byte)(op.Value & 0x80 | op.Value >> 1);
             _status.F |= LookupTable_sz53p[op.Value];
         }
 
@@ -1776,7 +1776,7 @@ namespace Speccy.Z80_CPU
         private void SUB(byte op)
         {
             ushort result = (ushort)(_status.A - op);
-            byte lookup = (byte)(((_status.A & 0x88) >> 3) | ((op & 0x88) >> 2) | ((result & 0x88) >> 1));
+            byte lookup = (byte)((_status.A & 0x88) >> 3 | (op & 0x88) >> 2 | (result & 0x88) >> 1);
             _status.A = (byte)result;
             _status.F = (byte)(((result & 0x100) != 0 ? FlagRegisterDefinition.C : (byte)0) | FlagRegisterDefinition.N | LookupTable_halfcarry_sub[lookup & 0x07] | LookupTable_overflow_sub[lookup >> 4] | LookupTable_sz53[_status.A]);
         }
@@ -1870,8 +1870,8 @@ namespace Speccy.Z80_CPU
             }
             else if ((_status.OpCode & 0xC0) == 0x40)   // LD r,r
             {
-                HalfRegister reg1 = GetHalfRegister((byte)(_status.OpCode >> 3));
-                HalfRegister reg2 = GetHalfRegister(_status.OpCode);
+                HalfRegister? reg1 = GetHalfRegister((byte)(_status.OpCode >> 3));
+                HalfRegister? reg2 = GetHalfRegister(_status.OpCode);
 
                 if (reg1 == null)
                 {
@@ -1896,7 +1896,7 @@ namespace Speccy.Z80_CPU
             {
                 // Operation beetween accumulator and other registers
                 // Usually are identified by 10 ooo rrr where ooo is the operation and rrr is the source register
-                HalfRegister reg = GetHalfRegister(_status.OpCode);
+                HalfRegister? reg = GetHalfRegister(_status.OpCode);
                 byte _Value;
 
                 if (reg == null)
@@ -2255,7 +2255,7 @@ namespace Speccy.Z80_CPU
                         // Accumulator (register A) also appear on the top half (A8 through A15) of
                         // the address bus at this time. Then the byte contained in the Accumulator is
                         // placed on the data bus and written to the selected peripheral device.
-                        _io.WriteByte((ushort)(_memory.ReadByte(_status.PC++) | (_status.A << 8)), _status.A);
+                        _io.WriteByte((ushort)(_memory.ReadByte(_status.PC++) | _status.A << 8), _status.A);
                         break;
                     case 0xD6:      // SUB nn
                         IncreaseTStates(7);
@@ -2277,7 +2277,7 @@ namespace Speccy.Z80_CPU
                         // Accumulator also appear on the top half (A8 through A15) of the address
                         // bus at this time. Then one byte from the selected port is placed on the data
                         // bus and written to the Accumulator (register A) in the CPU.
-                        _status.A = _io.ReadByte((ushort)(_memory.ReadByte(_status.PC++) | (_status.A << 8)));
+                        _status.A = _io.ReadByte((ushort)(_memory.ReadByte(_status.PC++) | _status.A << 8));
                         break;
 
 
@@ -2904,7 +2904,7 @@ namespace Speccy.Z80_CPU
                         // If an interrupt occurs during execution of this instruction, the Parity
                         // flag contains a 0.
                         _status.A = _status.I;
-                        _status.F = (byte)((_status.F & FlagRegisterDefinition.C) | LookupTable_sz53[_status.A] | (_status.IFF2 ? FlagRegisterDefinition.V : (byte)0));
+                        _status.F = (byte)(_status.F & FlagRegisterDefinition.C | LookupTable_sz53[_status.A] | (_status.IFF2 ? FlagRegisterDefinition.V : (byte)0));
                         break;
                     case 0x5E:
                     case 0x7E:  // IM 2
@@ -2920,8 +2920,8 @@ namespace Speccy.Z80_CPU
 
                     case 0x5F:  // LD A,R
                         IncreaseTStates(9);
-                        _status.A = (byte)((_status.R & 0x7F) | (_status.R7 & 0x80));
-                        _status.F = (byte)((_status.F & FlagRegisterDefinition.C) | LookupTable_sz53[_status.A] | (_status.IFF2 ? FlagRegisterDefinition.V : (byte)0));
+                        _status.A = (byte)(_status.R & 0x7F | _status.R7 & 0x80);
+                        _status.F = (byte)(_status.F & FlagRegisterDefinition.C | LookupTable_sz53[_status.A] | (_status.IFF2 ? FlagRegisterDefinition.V : (byte)0));
                         break;
 
                     case 0x67:  // RRD
@@ -3031,7 +3031,7 @@ namespace Speccy.Z80_CPU
             // Operations with single byte register
             // The format is 00 ooo rrr where ooo is the operation and rrr is the register
             HalfRegister reg = GetHalfRegister(_opCode);
-            HalfRegister _HL_ = null;
+            HalfRegister? _HL_ = null;
 
             // Check if the source/target is (HL)
             if (reg == null)
@@ -3158,7 +3158,7 @@ namespace Speccy.Z80_CPU
                     // oo is the operation (01 BIT, 10 RES, 11 SET)
                     // bbb is the bit number
                     // rrr is the register
-                    byte bit = (byte)((_opCode >> 3) & 0x07);
+                    byte bit = (byte)(_opCode >> 3 & 0x07);
 
                     switch (_opCode >> 6)
                     {

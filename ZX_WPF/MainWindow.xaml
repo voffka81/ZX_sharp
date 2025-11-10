@@ -1,4 +1,4 @@
-﻿<Window x:Class="ZX_sharp.MainWindow"
+﻿<Window x:Class="ZX_WPF.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -19,13 +19,13 @@
             <ColumnDefinition   Width="150"/>
         </Grid.ColumnDefinitions>
         <StackPanel  Orientation="Horizontal" Grid.ColumnSpan="2" >
-            <Rectangle x:Name="keyIndicator"  Width="10" Height="10" Fill="Red" Margin="5 0 0 5"></Rectangle>
-            <Button Name="btnOpenFile" Focusable="False" Height="30" Width="70" Command="{Binding OpenFileCommand}" Margin="5 0 0 5">Load image</Button>
-            <Button Name="btnPlayTape" Focusable="False" Height="30" Width="70" Command="{Binding PlayTapeCommand}" Margin="5 0 0 5">Play Tape</Button>
+            <Button Focusable="False" Height="30" Width="70" Command="{Binding OpenFileCommand}" Margin="5 0 0 5">Load image</Button>
+            <Button Focusable="False" Height="30" Width="70" Command="{Binding PlayTapeCommand}" Margin="5 0 0 5">Play Tape</Button>
+            <Button Focusable="False" Height="30" Width="70" Command="{Binding StopTapeCommand}" Margin="5 0 0 5" Content="Stop Tape"/>
 
             <Button Name="btnReset" Focusable="False" Height="30" Width="70" Command="{Binding ResetCommand}" Margin="50 0 0 5">Reset PC</Button>
             <TextBlock Text="Vol" VerticalAlignment="Center" Margin="20 0 5 5"/>
-                <Slider Width="140"
+            <Slider Width="140"
                     Minimum="0"
                     Maximum="1"
                     TickFrequency="0.05"
@@ -54,7 +54,7 @@
             <StackPanel Grid.Column="1" Orientation="Horizontal">
                 <TextBlock Text="{Binding Speccy.CpuDebugInfo.OpCode, StringFormat={}{0:x}}"/>
             </StackPanel>
-            
+
         </Grid>
     </Grid>
 </Window>

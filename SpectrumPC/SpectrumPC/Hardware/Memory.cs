@@ -1,7 +1,7 @@
 ﻿using System;
 using Speccy.Z80_CPU;
 
-namespace Speccy
+namespace SpectrumPC.Hardware
 {
     public class Memory : IBus16Bit
     {

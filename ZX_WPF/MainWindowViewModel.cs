@@ -1,5 +1,6 @@
 ﻿using Microsoft.Win32;
 using Speccy;
+using SpectrumPC.Hardware;
 using System;
 using System.ComponentModel;
 using System.Linq;
@@ -45,6 +46,7 @@ namespace ZX_WPF
         public ICommand OpenFileCommand { get; set; }
         public ICommand ResetCommand { get; set; }
         public ICommand PlayTapeCommand { get; set; }
+        public ICommand StopTapeCommand { get; set; }
 
         public MainWindowViewModel()
         {
@@ -80,6 +82,7 @@ namespace ZX_WPF
             OpenFileCommand = new RelayCommand(o => OpenFile());
             ResetCommand = new RelayCommand(o => ResetPC());
             PlayTapeCommand = new RelayCommand(o => PlayTape());
+            StopTapeCommand = new RelayCommand(o => StopTape());
             Initialize();
         }
 
@@ -92,12 +95,11 @@ namespace ZX_WPF
 
         private void ResetPC()
         {
+            Speccy.TapeDevice.Stop();
             Speccy.Reset();
         }
-        private void PlayTape()
-        {
-            Speccy.TapeDevice.Play();
-        }
+        private void PlayTape() => Speccy.TapeDevice.Play();
+        private void StopTape() => Speccy.TapeDevice.Stop();
 
 
         private void Initialize()

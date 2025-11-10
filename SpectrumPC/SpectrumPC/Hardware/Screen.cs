@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Speccy
+namespace SpectrumPC.Hardware
 {
     public class Display
     {
@@ -79,7 +79,7 @@ namespace Speccy
                 for (var line = 0; line < 8; line++)
                     for (var y = 0; y < 63; y += 8)
                     {
-                        _lookupY[y + line + (third * 64)] = pos;
+                        _lookupY[y + line + third * 64] = pos;
                         pos += 32;
                     }
         }
@@ -139,18 +139,18 @@ namespace Speccy
                     {
                         eventIndex++;
                     }
-                    PixelBuffer[(row * Width) + col] = _ulaColours[_borderTimeline[eventIndex].Colour];
+                    PixelBuffer[row * Width + col] = _ulaColours[_borderTimeline[eventIndex].Colour];
                 }
             }
             for (var ay = 0; ay < AttributeHeight; ay++)
                 for (var ax = 0; ax < AttributeWidth; ax++)
                 {
-                    var attribute = _ram.ReadByte(PixelRamEnd + (ay * AttributeWidth + ax));
+                    var attribute = _ram.ReadByte(PixelRamEnd + ay * AttributeWidth + ax);
                     var bright = (byte)((attribute & 64) >> 3);
-                    var foreColor = _ulaColours[(attribute & 7) | bright];
-                    var backColor = _ulaColours[((attribute & 56) >> 3) | bright];
+                    var foreColor = _ulaColours[attribute & 7 | bright];
+                    var backColor = _ulaColours[(attribute & 56) >> 3 | bright];
 
-                    if (_flashReversed && ((attribute & 0x80) != 0))
+                    if (_flashReversed && (attribute & 0x80) != 0)
                     {
                         var tmp = foreColor;
                         foreColor = backColor;
@@ -165,7 +165,7 @@ namespace Speccy
                         {
                             var a = 128 >> px;
                             var x = ax * 8 + px;
-                            PixelBuffer[((48 + y) * Width) + (48 + x)] = (pixels & a) != 0 ? foreColor : backColor;
+                            PixelBuffer[(48 + y) * Width + 48 + x] = (pixels & a) != 0 ? foreColor : backColor;
                         }
                     }
                 }
@@ -175,7 +175,7 @@ namespace Speccy
         {
             for (int row = 0; row < Height; row++)
             {
-                long lineIndex = ((long)row * LinesPerFrame) / Height;
+                long lineIndex = (long)row * LinesPerFrame / Height;
                 if (lineIndex >= LinesPerFrame)
                 {
                     lineIndex = LinesPerFrame - 1;
@@ -186,7 +186,7 @@ namespace Speccy
 
             for (int col = 0; col < Width; col++)
             {
-                long columnOffset = ((long)col * TStatesPerLine) / Width;
+                long columnOffset = (long)col * TStatesPerLine / Width;
                 if (columnOffset >= TStatesPerLine)
                 {
                     columnOffset = TStatesPerLine - 1;

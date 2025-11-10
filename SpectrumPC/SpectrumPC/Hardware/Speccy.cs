@@ -1,8 +1,8 @@
 ﻿using Speccy.Filetypes;
 using Speccy.Z80_CPU;
-using SpectrumPC.Filetypes.ZXBox.Core.Hardware.Input;
+using SpectrumPC.Z80_CPU;
 
-namespace Speccy
+namespace SpectrumPC.Hardware
 {
 
     public class Computer
@@ -115,7 +115,7 @@ namespace Speccy
                 using (FileStream file = new(tapePath, FileMode.Open, FileAccess.Read))
                 {
                     byte[] bytes = new byte[file.Length];
-                    file.Read(bytes, 0, (int)file.Length);
+                    file.ReadExactly(bytes, 0, (int)file.Length);
                     ms.Write(bytes, 0, (int)file.Length);
                     _tapeDevice.LoadTape(ms.ToArray());
                 }

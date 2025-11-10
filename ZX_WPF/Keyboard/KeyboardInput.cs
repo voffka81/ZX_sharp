@@ -1,6 +1,7 @@
 ﻿using Speccy;
 using System;
 using System.Runtime.InteropServices;
+using SpectrumPC.Hardware;
 
 namespace ZX_WPF.Keyboard
 {

@@ -1,4 +1,4 @@
-﻿namespace Speccy
+﻿namespace SpectrumPC.Hardware
 {
     public class Kempston
     {

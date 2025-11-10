@@ -1,5 +1,4 @@
-﻿using SpectrumPC.Filetypes.ZXBox.Core.Hardware.Input;
-using static SpectrumPC.Filetypes.ZXBox.Core.Hardware.Input.TapePlayer;
+﻿using SpectrumPC.Hardware;
 
 namespace Speccy.Z80_CPU
 {
@@ -7,27 +6,15 @@ namespace Speccy.Z80_CPU
     {
         public byte BorderColor = 0x0;
 
+        public long TotalTstates = 0;
 
+        EarValue _earValue;
+        bool firstread = true;
+        int tapeposition = 0;
+        private byte TAPE_BIT = 0x40;
+        private bool _lastTapeEarBit = false;
         public byte[] keyLine = new byte[8];
-        public byte[] io = new byte[255];
-
-        public byte GetKeyboardLineStatus(byte lines)
-        {
-            byte status = 0;
-            lines = (byte)~lines;
-
-            var lineIndex = 0;
-            while (lines > 0)
-            {
-                if ((lines & 0x01) != 0)
-                {
-                    status |= keyLine[lineIndex];
-                }
-                lineIndex++;
-                lines >>= 1;
-            }
-            return (byte)~status;
-        }
+        public byte[] io = new byte[255];       
 
         public bool TapeLoading = false;
 
@@ -43,6 +30,7 @@ namespace Speccy.Z80_CPU
             _joystick = joystick;
             _tapeDevice = tapeDevice;
             _display = display;
+            _earValue=new EarValue();
         }
 
         public byte ReadByte(int port)
@@ -77,11 +65,11 @@ namespace Speccy.Z80_CPU
                         }
                     }
 
-                    ear = _tapeDevice.EarValues[tapeposition];
-                    _beeper.ProcessEarBitValue(true, ear.Ear); // tape EAR influences audio during load
-                    if (ear != null)
+                    _earValue = _tapeDevice.EarValues[tapeposition];
+                    _beeper.ProcessEarBitValue(true, _earValue.Ear); // tape EAR influences audio during load
+                    if (_earValue != null)
                     {
-                        if (ear.Pulse == PulseTypeEnum.Stop)
+                        if (_earValue.Pulse == PulseTypeEnum.Stop)
                         {
                             _tapeDevice.IsPlaying = false;
                             firstread = true;
@@ -89,7 +77,7 @@ namespace Speccy.Z80_CPU
                         }
                         else
                         {
-                            if (ear.Ear)
+                            if (_earValue.Ear)
                                 result |= TAPE_BIT;
                             else
                                 result &= ~TAPE_BIT;
@@ -113,14 +101,23 @@ namespace Speccy.Z80_CPU
 
             return (byte)result;
         }
+        public byte GetKeyboardLineStatus(byte lines)
+        {
+            byte status = 0;
+            lines = (byte)~lines;
 
-        public long TotalTstates = 0;
-
-        EarValue ear;
-        bool firstread = true;
-        int tapeposition = 0;
-        private byte TAPE_BIT = 0x40;
-        private bool _lastTapeEarBit = false;
+            var lineIndex = 0;
+            while (lines > 0)
+            {
+                if ((lines & 0x01) != 0)
+                {
+                    status |= keyLine[lineIndex];
+                }
+                lineIndex++;
+                lines >>= 1;
+            }
+            return (byte)~status;
+        }       
 
         // Advance tape EAR state based on current tape T-states, independent of port reads
         public void AdvanceTapeEar()
@@ -144,10 +141,10 @@ namespace Speccy.Z80_CPU
                 else break;
             }
 
-            ear = _tapeDevice.EarValues[tapeposition];
-            if (ear != null)
+            _earValue = _tapeDevice.EarValues[tapeposition];
+            if (_earValue != null)
             {
-                if (ear.Pulse == PulseTypeEnum.Stop)
+                if (_earValue.Pulse == PulseTypeEnum.Stop)
                 {
                     _tapeDevice.IsPlaying = false;
                     firstread = true;
@@ -156,10 +153,10 @@ namespace Speccy.Z80_CPU
                 else
                 {
                     // Generate audio on ear edge changes
-                    if (ear.Ear != _lastTapeEarBit)
+                    if (_earValue.Ear != _lastTapeEarBit)
                     {
-                        _beeper.ProcessEarBitValue(true, ear.Ear);
-                        _lastTapeEarBit = ear.Ear;
+                        _beeper.ProcessEarBitValue(true, _earValue.Ear);
+                        _lastTapeEarBit = _earValue.Ear;
                     }
                 }
             }

@@ -1,8 +1,8 @@
 ﻿using System;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
-using Speccy;
 using System.Threading;
+using SpectrumPC.Hardware;
 
 namespace ZX_WPF.Audio
 {

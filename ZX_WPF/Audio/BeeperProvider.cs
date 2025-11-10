@@ -1,6 +1,7 @@
 ﻿using System;
 using NAudio.Wave;
 using Speccy;
+using SpectrumPC.Hardware;
 
 namespace ZX_WPF.Audio
 {
