@@ -10,11 +10,10 @@ namespace ZX_WPF.Audio
         public WaveFormat WaveFormat { get; }
 
         private const int AudioSampleRate = Beeper.SampleRate;
-        private const int FRAMES_BUFFERED = 90;
-        private const int FRAMES_DELAYED = 4;
+        private const int FRAMES_BUFFERED = 120;
+        private const int INITIAL_PREFILL_FRAMES = 1;
         private const int SamplesPerFrame = Beeper.SamplesPerFrame;
 
-        private int _frameCount;
         public float[] _waveBuffer;
         public int _bufferLength;
         public long _writeIndex;
@@ -22,6 +21,7 @@ namespace ZX_WPF.Audio
         private int _availableSamples;
         private readonly object _bufferLock = new();
         private float _lastSample;
+        private bool _playbackActive;
         public int AvailableSamples
         {
             get
@@ -36,13 +36,13 @@ namespace ZX_WPF.Audio
         public BeeperProvider()
         {
             WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(AudioSampleRate, 1);
-            _frameCount = 0;
             _bufferLength = SamplesPerFrame * FRAMES_BUFFERED;
             _waveBuffer = new float[_bufferLength];
             _writeIndex = 0;
             _readIndex = 0;
             _availableSamples = 0;
             _lastSample = 0f;
+            _playbackActive = false;
 
             PlaybackEngine = new AudioProcessor();
 
@@ -76,38 +76,53 @@ namespace ZX_WPF.Audio
 
         public int Read(float[] buffer, int offset, int count)
         {
-            // --- We set up the initial buffer content for desired latency
-            if (_frameCount <= FRAMES_DELAYED)
-            {
+            var startThreshold = SamplesPerFrame * INITIAL_PREFILL_FRAMES;
 
-                for (var i = 0; i < count; i++)
-                {
-                    buffer[offset++] = 0.0F;
-                }
-
-            }
-            else
+            if (!_playbackActive)
             {
-                // --- We use the real samples
                 lock (_bufferLock)
                 {
-                    for (var i = 0; i < count; i++)
+                    if (_availableSamples >= startThreshold)
                     {
-                        if (_availableSamples > 0)
-                        {
-                            buffer[offset++] = _waveBuffer[_readIndex++];
-                            if (_readIndex >= _bufferLength) _readIndex = 0;
-                            _availableSamples--;
-                            _lastSample = buffer[offset - 1];
-                        }
-                        else
-                        {
-                            buffer[offset++] = _lastSample;
-                        }
+                        _playbackActive = true;
                     }
                 }
             }
-            _frameCount++;
+
+            if (!_playbackActive)
+            {
+                var fallback = _lastSample;
+                for (var i = 0; i < count; i++)
+                {
+                    buffer[offset + i] = fallback;
+                }
+
+                return count;
+            }
+
+            lock (_bufferLock)
+            {
+                for (var i = 0; i < count; i++)
+                {
+                    if (_availableSamples > 0)
+                    {
+                        var sample = _waveBuffer[_readIndex++];
+                        if (_readIndex >= _bufferLength) _readIndex = 0;
+                        _availableSamples--;
+                        _lastSample = sample;
+                        buffer[offset + i] = sample;
+                    }
+                    else
+                    {
+                        buffer[offset + i] = _lastSample;
+                    }
+                }
+
+                if (_availableSamples == 0)
+                {
+                    _playbackActive = false;
+                }
+            }
             return count;
         }
 

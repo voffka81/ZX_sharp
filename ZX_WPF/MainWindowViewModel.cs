@@ -111,7 +111,10 @@ namespace ZX_WPF
             _keyboardListenerTask = Task.Run(() => KeyboardLoopAsync(_keyboardLoopCts.Token), _keyboardLoopCts.Token);
 
             _machineLoopCts = new CancellationTokenSource();
-            _machineLoopTask = Task.Run(() => MachineLoopAsync(_machineLoopCts.Token), _machineLoopCts.Token);
+            _machineLoopTask = Task.Factory.StartNew(() => MachineLoop(_machineLoopCts.Token),
+                _machineLoopCts.Token,
+                TaskCreationOptions.LongRunning,
+                TaskScheduler.Default);
         }
 
         private async Task KeyboardLoopAsync(CancellationToken token)
@@ -163,16 +166,16 @@ namespace ZX_WPF
             }
         }
 
-        private async Task MachineLoopAsync(CancellationToken token)
+        private void MachineLoop(CancellationToken token)
         {
-            const int targetBufferedSamples = Beeper.SamplesPerFrame * 8; // ~160ms of audio
-            const int maxBufferedSamples = Beeper.SamplesPerFrame * 12; // ~240ms of audio
+            const int maxBufferedSamples = Beeper.SamplesPerFrame * 16; // ~320ms of audio
+            var spinWait = new SpinWait();
 
             while (!token.IsCancellationRequested)
             {
                 var availableSamples = _soundDevice.AvailableSamples;
 
-                if (availableSamples < targetBufferedSamples)
+                if (availableSamples < maxBufferedSamples)
                 {
                     do
                     {
@@ -183,26 +186,20 @@ namespace ZX_WPF
                         }
                         _soundDevice.AddSoundFrame(Speccy.AudioSamples);
                         availableSamples = _soundDevice.AvailableSamples;
+                        spinWait.Reset();
                     }
-                    while (!token.IsCancellationRequested && availableSamples < targetBufferedSamples);
+                    while (!token.IsCancellationRequested && availableSamples < maxBufferedSamples);
 
                     continue;
                 }
 
                 if (availableSamples > maxBufferedSamples)
                 {
-                    try
-                    {
-                        await Task.Delay(1, token).ConfigureAwait(false);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        break;
-                    }
+                    spinWait.SpinOnce();
                 }
                 else
                 {
-                    await Task.Yield();
+                    spinWait.SpinOnce();
                 }
             }
         }
