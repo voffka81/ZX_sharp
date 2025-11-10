@@ -1,15 +1,25 @@
 ﻿namespace Speccy
 {
+    using System;
+
     public class Beeper
     {
-        public float[] AudioSamples { get; private set; }
-        public bool LastEarBit { get; set; }
-        public long CpuTacts { get; set; }
+        // ZX Spectrum: 69888 T-states per 50Hz frame
+        private const int FrameTStates = 69888;
+        public const int FrameRate = 50;
+        public const int SamplesPerFrame = 882; // 882 samples * 50 fps = 44.1 kHz output
+        public const int SampleRate = FrameRate * SamplesPerFrame;
+        private const double TStatesPerSample = (double)FrameTStates / SamplesPerFrame;
+
+        public float[] AudioSamples { get; private set; } = Array.Empty<float>();
+        public bool LastEarBit { get; private set; } // Combined speaker OR tape bit
+        public long CpuTacts { get; private set; }
         public int NextSampleIndex { get; private set; }
-        int LastSampleTact = 0;
-        private long _frameBegins;
-        int _frameTacts = 700; //700 samples per frame for35000Hz/50Hz
-        int _tactsPerSample = 99; //69888 /700 ≈99.84, so99 is closer
+        private double _nextSampleThreshold;
+
+        private bool _speakerBit;
+        private bool _tapeEarBit;
+        private float _dcLevel;
 
         public Beeper()
         {
@@ -18,26 +28,32 @@
 
         public void Initialize()
         {
-            LastSampleTact = 0;
+            _nextSampleThreshold = 0.0;
             NextSampleIndex = 0;
-            AudioSamples = new float[_frameTacts];
+            LastEarBit = false;
+            _speakerBit = false;
+            _tapeEarBit = false;
+            _dcLevel = 0f;
+            AudioSamples = new float[SamplesPerFrame];
+            CpuTacts = 0;
         }
 
         public void ProcessEarBitValue(bool fromTape, bool earBit)
         {
-            //if (!fromTape && _useTapeMode)
-            //{
-            //    // --- The EAR bit comes from and OUT instruction, but now we're in tape mode
-            //    return;
-            //}
-            if (earBit == LastEarBit)
+            if (fromTape)
             {
-                // --- The earbit has not changed
-                return;
+                _tapeEarBit = earBit;
             }
-            LastEarBit = earBit;
-            CreateSamples();
+            else
+            {
+                _speakerBit = earBit;
+            }
+            bool combined = _speakerBit || _tapeEarBit;
+            if (combined == LastEarBit) return; // No change
 
+            // Fill samples up to this point with the previous state
+            GenerateSamplesUpTo(CpuTacts);
+            LastEarBit = combined;
         }
 
 
@@ -47,45 +63,44 @@
             Initialize();
         }
 
-        private void CreateSamples()
+        private void GenerateSamplesUpTo(long currentCpuTacts)
         {
-            var nextSampleOffset = LastSampleTact;
+            if (currentCpuTacts < 0) return;
 
-            // Work with a snapshot of cpuTacts to avoid races
-            long currentCpuTacts = CpuTacts;
-
-            // Ensure cpuTacts does not exceed the frame end
-            if (currentCpuTacts > _frameBegins + _frameTacts)
+            while (_nextSampleThreshold <= currentCpuTacts && NextSampleIndex < SamplesPerFrame)
             {
-                currentCpuTacts = _frameBegins + _frameTacts;
+                AudioSamples[NextSampleIndex++] = LastEarBit ? 1.0f : -1.0f;
+                _nextSampleThreshold += TStatesPerSample;
             }
-
-            // Fill samples until we catch up or until buffer is full
-            while (nextSampleOffset < currentCpuTacts && NextSampleIndex < AudioSamples.Length)
-            {
-                AudioSamples[NextSampleIndex++] = LastEarBit ? 1.0f : 0;
-                nextSampleOffset += _tactsPerSample;
-            }
-
-            // Clamp NextSampleIndex to valid range
-            if (NextSampleIndex >= AudioSamples.Length)
-            {
-                NextSampleIndex = AudioSamples.Length - 1;
-            }
-
-            LastSampleTact = nextSampleOffset;
         }
 
-        // --- Added: Fill remaining samples at the end of the frame
-        public void FinalizeFrame()
+        public void SetCpuTacts(long tstates)
         {
-            while (NextSampleIndex < AudioSamples.Length)
+            CpuTacts = tstates;
+            GenerateSamplesUpTo(CpuTacts);
+        }
+
+        public void FinalizeFrame(long finalCpuTacts)
+        {
+            // Ensure we fill any remaining samples for the frame duration
+            GenerateSamplesUpTo(FrameTStates);
+            while (NextSampleIndex < SamplesPerFrame)
             {
-                AudioSamples[NextSampleIndex++] = LastEarBit ? 1.0f : 0f;
+                AudioSamples[NextSampleIndex++] = LastEarBit ? 1.0f : -1.0f;
             }
-            LastSampleTact = 0;
+
+            // Apply simple high-pass filter to reduce DC and tame amplitude
+            for (var i = 0; i < SamplesPerFrame; i++)
+            {
+                _dcLevel = 0.995f * _dcLevel + 0.005f * AudioSamples[i];
+                AudioSamples[i] = (AudioSamples[i] - _dcLevel) * 0.5f;
+            }
+
+            // Prepare next frame
+            _nextSampleThreshold -= FrameTStates;
+            if (_nextSampleThreshold < 0) _nextSampleThreshold = 0.0;
             NextSampleIndex = 0;
-            _frameBegins = CpuTacts;
+            CpuTacts = 0;
         }
     }
 }

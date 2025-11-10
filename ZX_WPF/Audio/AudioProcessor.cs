@@ -1,5 +1,7 @@
-﻿using NAudio.Wave;
+﻿using System;
+using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
+using Speccy;
 using System.Threading;
 
 namespace ZX_WPF.Audio
@@ -14,7 +16,7 @@ namespace ZX_WPF.Audio
         /// <summary>
         /// The AudioPlaybackEngine sample rate
         /// </summary>
-        private int SampleRate = 35000;
+        private int SampleRate = Beeper.SampleRate;
         /// <summary>
         /// Stereo Output
         /// </summary>
@@ -24,6 +26,8 @@ namespace ZX_WPF.Audio
         /// The incoming Beeper feed
         /// </summary>
         private ISampleProvider BeeperInput;
+        private VolumeSampleProvider? _volumeStage;
+        private float _volume = 1f;
 
         public AudioProcessor()
         {
@@ -52,9 +56,12 @@ namespace ZX_WPF.Audio
             // make sure the sample rate is 44100 and convert to stereo
             var resampStage = Ensure44100(input);
             // init volume stage
-            var volumeStage = new VolumeSampleProvider(resampStage);
+            _volumeStage = new VolumeSampleProvider(resampStage)
+            {
+                Volume = _volume
+            };
             // save to field
-            BeeperInput = volumeStage;
+            BeeperInput = _volumeStage;
             // add to the mixer
             mixer.AddMixerInput(BeeperInput);
         }
@@ -62,6 +69,20 @@ namespace ZX_WPF.Audio
         {
             var resampler = new WdlResamplingSampleProvider(input, SampleRate);
             return resampler.ToStereo();
+        }
+
+        public float Volume
+        {
+            get => _volumeStage?.Volume ?? _volume;
+            set
+            {
+                var clamped = Math.Clamp(value, 0f, 1f);
+                _volume = clamped;
+                if (_volumeStage != null)
+                {
+                    _volumeStage.Volume = clamped;
+                }
+            }
         }
     }
 }

@@ -1,10 +1,15 @@
-﻿
+﻿using System;
+using System.Collections.Generic;
+
 namespace Speccy
 {
     public class Display
     {
         private const int PixelRamStart = 0x4000;
         private const int PixelRamEnd = 0x5800;
+        private const int FrameTStates = 69888;
+        private const int LinesPerFrame = 312;
+        private const int TStatesPerLine = FrameTStates / LinesPerFrame;
 
         public const int AttributeWidth = 32;
         public const int AttributeHeight = 24;
@@ -13,14 +18,31 @@ namespace Speccy
         public const int AttributeOffset = PixelWidth * AttributeHeight;
         private readonly ushort[] _lookupY = new ushort[PixelHeight];
 
-        public int BorderColor;
+        private readonly struct BorderEvent
+        {
+            public BorderEvent(int tact, byte colour)
+            {
+                Tact = tact;
+                Colour = colour;
+            }
+
+            public int Tact { get; }
+            public byte Colour { get; }
+        }
+
+        private readonly List<BorderEvent> _borderTimeline = new();
+        private readonly int[] _lineStartTStates = new int[Height];
+        private readonly int[] _columnTStates = new int[Width];
+        private byte _currentBorderColour;
+
+        public byte BorderColor;
         private bool _flashReversed = false;
 
         private readonly Memory _ram;
         public static int Width => 352;
         public static int Height => 296;
         //public int[,] pixelBuffer = new int[257, 193]; //Left border * right border = 48 , 256 working area //top=55,bottom=56,working area =192
-        public int[,] pixelBuffer = new int[Width, Height]; //Left border * right border = 48 , 256 working area //top=55,bottom=56,working area =192
+        public int[] PixelBuffer { get; } = new int[Width * Height]; //Left border * right border = 48 , 256 working area //top=55,bottom=56,working area =192
         private readonly int[] _ulaColours =
         {
             0x000000, // Black
@@ -46,6 +68,8 @@ namespace Speccy
             BorderColor = 1;
             _ram = ram;
             PrepareSpectrumDisplay();
+            PrepareBorderTimings();
+            BeginFrame(BorderColor);
         }
 
         private void PrepareSpectrumDisplay()
@@ -64,9 +88,60 @@ namespace Speccy
             _flashReversed = !_flashReversed;
         }
 
+        public void BeginFrame(byte initialColour)
+        {
+            _borderTimeline.Clear();
+            _currentBorderColour = initialColour;
+            BorderColor = initialColour;
+            _borderTimeline.Add(new BorderEvent(0, initialColour));
+        }
+
+        public void RecordBorderChange(long cpuTacts, byte colour)
+        {
+            if (colour == _currentBorderColour)
+                return;
+
+            int normalized = NormalizeTacts(cpuTacts);
+
+            if (_borderTimeline.Count > 0)
+            {
+                int lastIndex = _borderTimeline.Count - 1;
+                if (normalized <= _borderTimeline[lastIndex].Tact)
+                {
+                    normalized = _borderTimeline[lastIndex].Tact + 1;
+                    if (normalized >= FrameTStates)
+                    {
+                        normalized = FrameTStates - 1;
+                    }
+                }
+            }
+
+            _borderTimeline.Add(new BorderEvent(normalized, colour));
+            _currentBorderColour = colour;
+            BorderColor = colour;
+        }
+
         public void GetDisplayBuffer()
         {
-            for (int i = 0; i < Width * Height; i++) pixelBuffer[i % Width, i / Width] = _ulaColours[BorderColor];
+            if (_borderTimeline.Count == 0)
+            {
+                _borderTimeline.Add(new BorderEvent(0, BorderColor));
+            }
+
+            int eventIndex = 0;
+            for (int row = 0; row < Height; row++)
+            {
+                int rowBase = _lineStartTStates[row];
+                for (int col = 0; col < Width; col++)
+                {
+                    int pixelTstate = rowBase + _columnTStates[col];
+                    while (eventIndex + 1 < _borderTimeline.Count && _borderTimeline[eventIndex + 1].Tact <= pixelTstate)
+                    {
+                        eventIndex++;
+                    }
+                    PixelBuffer[(row * Width) + col] = _ulaColours[_borderTimeline[eventIndex].Colour];
+                }
+            }
             for (var ay = 0; ay < AttributeHeight; ay++)
                 for (var ax = 0; ax < AttributeWidth; ax++)
                 {
@@ -90,10 +165,46 @@ namespace Speccy
                         {
                             var a = 128 >> px;
                             var x = ax * 8 + px;
-                            pixelBuffer[48 + x, 48 + y] = (pixels & a) != 0 ? foreColor : backColor;
+                            PixelBuffer[((48 + y) * Width) + (48 + x)] = (pixels & a) != 0 ? foreColor : backColor;
                         }
                     }
                 }
+        }
+
+        private void PrepareBorderTimings()
+        {
+            for (int row = 0; row < Height; row++)
+            {
+                long lineIndex = ((long)row * LinesPerFrame) / Height;
+                if (lineIndex >= LinesPerFrame)
+                {
+                    lineIndex = LinesPerFrame - 1;
+                }
+
+                _lineStartTStates[row] = (int)(lineIndex * TStatesPerLine);
+            }
+
+            for (int col = 0; col < Width; col++)
+            {
+                long columnOffset = ((long)col * TStatesPerLine) / Width;
+                if (columnOffset >= TStatesPerLine)
+                {
+                    columnOffset = TStatesPerLine - 1;
+                }
+
+                _columnTStates[col] = (int)columnOffset;
+            }
+        }
+
+        private static int NormalizeTacts(long cpuTacts)
+        {
+            long value = cpuTacts % FrameTStates;
+            if (value < 0)
+            {
+                value += FrameTStates;
+            }
+
+            return (int)value;
         }
     }
 }

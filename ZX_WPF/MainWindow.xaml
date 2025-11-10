@@ -24,6 +24,18 @@
             <Button Name="btnPlayTape" Focusable="False" Height="30" Width="70" Command="{Binding PlayTapeCommand}" Margin="5 0 0 5">Play Tape</Button>
 
             <Button Name="btnReset" Focusable="False" Height="30" Width="70" Command="{Binding ResetCommand}" Margin="50 0 0 5">Reset PC</Button>
+            <TextBlock Text="Vol" VerticalAlignment="Center" Margin="20 0 5 5"/>
+                <Slider Width="140"
+                    Minimum="0"
+                    Maximum="1"
+                    TickFrequency="0.05"
+                    SmallChange="0.01"
+                    LargeChange="0.1"
+                    IsSnapToTickEnabled="True"
+                    IsMoveToPointEnabled="True"
+                    Value="{Binding Volume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    Margin="0 0 0 5"/>
+            <TextBlock Text="{Binding Volume, StringFormat={}{0:P0}}" VerticalAlignment="Center" Margin="5 0 0 5"/>
         </StackPanel>
         <Image Grid.Row="2" x:Name="screenImage" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Source="{Binding Screen}"></Image>
         <Grid Grid.Row="2" Grid.Column="2">

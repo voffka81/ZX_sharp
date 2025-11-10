@@ -35,11 +35,14 @@ namespace Speccy.Z80_CPU
         private Kempston _joystick;
         private TapePlayer _tapeDevice;
 
-        public Bus16Bit(Beeper beeper, Kempston joystick, TapePlayer tapeDevice)
+        private readonly Display _display;
+
+        public Bus16Bit(Beeper beeper, Kempston joystick, TapePlayer tapeDevice, Display display)
         {
             _beeper = beeper;
             _joystick = joystick;
             _tapeDevice = tapeDevice;
+            _display = display;
         }
 
         public byte ReadByte(int port)
@@ -50,6 +53,9 @@ namespace Speccy.Z80_CPU
             if ((port & 0xFF) == 0xFE)
             {
                 result = GetKeyboardLineStatus(line);
+
+                // Default the EAR bit high (no signal) and override below when the tape plays
+                result |= TAPE_BIT;
 
                 if (_tapeDevice.IsPlaying)
                 {
@@ -72,23 +78,29 @@ namespace Speccy.Z80_CPU
                     }
 
                     ear = _tapeDevice.EarValues[tapeposition];
-                    //_beeper.ProcessEarBitValue(false, ear.Ear);
+                    _beeper.ProcessEarBitValue(true, ear.Ear); // tape EAR influences audio during load
                     if (ear != null)
                     {
                         if (ear.Pulse == PulseTypeEnum.Stop)
                         {
                             _tapeDevice.IsPlaying = false;
+                            firstread = true;
+                            tapeposition = 0;
                         }
-                        if (ear.Ear)
-                            result &= ~(TAPE_BIT);
                         else
-                            result &= ~(TAPE_BIT);
+                        {
+                            if (ear.Ear)
+                                result |= TAPE_BIT;
+                            else
+                                result &= ~TAPE_BIT;
+                        }
                     }
 
                     if (_tapeDevice.CurrentTstate > _tapeDevice.TotalTstates)
                     {
                         firstread = true;
                         _tapeDevice.IsPlaying = false;
+                        tapeposition = 0;
                     }
                 }
             }
@@ -99,8 +111,7 @@ namespace Speccy.Z80_CPU
             }
 
 
-            var data = (byte)(result & 191);
-            return data;
+            return (byte)result;
         }
 
         public long TotalTstates = 0;
@@ -109,6 +120,57 @@ namespace Speccy.Z80_CPU
         bool firstread = true;
         int tapeposition = 0;
         private byte TAPE_BIT = 0x40;
+        private bool _lastTapeEarBit = false;
+
+        // Advance tape EAR state based on current tape T-states, independent of port reads
+        public void AdvanceTapeEar()
+        {
+            if (!_tapeDevice.IsPlaying) return;
+
+            if (firstread)
+            {
+                tapeposition = 0;
+                _tapeDevice.CurrentTstate = 0;
+                firstread = false;
+            }
+
+            // Move forward through pulse list as time advances
+            for (; tapeposition < _tapeDevice.EarValues.Count - 1;)
+            {
+                if (_tapeDevice.EarValues[tapeposition + 1].TState < _tapeDevice.CurrentTstate)
+                {
+                    tapeposition++;
+                }
+                else break;
+            }
+
+            ear = _tapeDevice.EarValues[tapeposition];
+            if (ear != null)
+            {
+                if (ear.Pulse == PulseTypeEnum.Stop)
+                {
+                    _tapeDevice.IsPlaying = false;
+                    firstread = true;
+                    tapeposition = 0;
+                }
+                else
+                {
+                    // Generate audio on ear edge changes
+                    if (ear.Ear != _lastTapeEarBit)
+                    {
+                        _beeper.ProcessEarBitValue(true, ear.Ear);
+                        _lastTapeEarBit = ear.Ear;
+                    }
+                }
+            }
+
+            if (_tapeDevice.CurrentTstate > _tapeDevice.TotalTstates)
+            {
+                firstread = true;
+                _tapeDevice.IsPlaying = false;
+                tapeposition = 0;
+            }
+        }
 
         public void WriteByte(int address, byte data)
         {
@@ -117,9 +179,10 @@ namespace Speccy.Z80_CPU
             {
                 // border
                 BorderColor = (byte)(data & 0x07);
+                _display.RecordBorderChange(_beeper.CpuTacts, BorderColor);
 
                 // sound
-                _beeper.ProcessEarBitValue(false, (data & 0x10) != 0);
+                _beeper.ProcessEarBitValue(false, (data & 0x10) != 0); // speaker bit
 
                 // tape
                 //_beeper.ProcessEarBitValue(false, (data & 0x08) != 0);

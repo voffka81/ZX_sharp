@@ -34,17 +34,14 @@ namespace Speccy
         public Computer()
         {
             ComputerRunning = true;
+            AudioSamples = Array.Empty<float>();
             _beeperDevice = new Beeper();
             _joystik = new Kempston();
-
             _tapeDevice = new TapePlayer();
-
             _displayUnit = new Display(_ram);
-            _IOdataBus = new Bus16Bit(_beeperDevice, _joystik, _tapeDevice);
-
+            _IOdataBus = new Bus16Bit(_beeperDevice, _joystik, _tapeDevice, _displayUnit);
             _z80 = new Z80CPU(_ram, _IOdataBus);
             _z80.Reset();
-
             TestVideoBuffer();
         }
 
@@ -61,15 +58,28 @@ namespace Speccy
        
         public void ExecuteCycle()
         {
-            _displayUnit.BorderColor = (_IOdataBus as Bus16Bit).BorderColor;
+            var bus = _IOdataBus as Bus16Bit;
+            if (bus != null)
+            {
+                _displayUnit.BeginFrame(bus.BorderColor);
+                _displayUnit.BorderColor = bus.BorderColor;
+            }
+            var busForTape = _IOdataBus as Bus16Bit;
             while (_z80.TicksCount < _z80.NextEvent)
             {
-                _beeperDevice.CpuTacts = _z80.TicksCount;
                 _z80.Cycle();
+                _beeperDevice.SetCpuTacts(_z80.TicksCount); // update after cycle so TicksCount advanced
                 _tapeDevice.AddTStates(_z80.TStateValue);
+                busForTape?.AdvanceTapeEar();
             }
 
-            _z80.ResetTStates();
+            // Finalize audio for this frame before resetting CPU t-states
+            if (_z80.TicksCount >= _z80.NextEvent)
+            {
+                _beeperDevice.FinalizeFrame(_z80.TicksCount);
+                AudioSamples = _beeperDevice.AudioSamples;
+                _z80.ResetTStates();
+            }
             _z80.Interrupt();
 
             _flashCount++;
@@ -80,8 +90,7 @@ namespace Speccy
                 _displayUnit.ReverseFlash();
 
             }
-            _beeperDevice.FinalizeFrame(); // Fill remaining audio samples for the frame
-            AudioSamples = _beeperDevice.AudioSamples;
+            // Audio samples already finalized above
         }
 
 
@@ -89,11 +98,13 @@ namespace Speccy
         {
             if (key == SpectrumKeyCode.Invalid)
                 return;
+            var bus = _IOdataBus as Bus16Bit;
+            if (bus == null) return;
             var lineIndex = (byte)key / 5;
             var lineMask = 1 << (byte)key % 5;
-            (_IOdataBus as Bus16Bit).keyLine[lineIndex] = isPressed
-                ? (byte)((_IOdataBus as Bus16Bit).keyLine[lineIndex] | lineMask)
-                : (byte)((_IOdataBus as Bus16Bit).keyLine[lineIndex] & ~lineMask);
+            bus.keyLine[lineIndex] = isPressed
+                ? (byte)(bus.keyLine[lineIndex] | lineMask)
+                : (byte)(bus.keyLine[lineIndex] & ~lineMask);
         }
 
         public void TapeInput(string tapePath)
