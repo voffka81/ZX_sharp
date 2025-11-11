@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace SpectrumPC.Hardware
+﻿namespace SpectrumPC.Hardware
 {
     public class Display
     {
@@ -41,7 +38,6 @@ namespace SpectrumPC.Hardware
         private readonly Memory _ram;
         public static int Width => 352;
         public static int Height => 296;
-        //public int[,] pixelBuffer = new int[257, 193]; //Left border * right border = 48 , 256 working area //top=55,bottom=56,working area =192
         public int[] PixelBuffer { get; } = new int[Width * Height]; //Left border * right border = 48 , 256 working area //top=55,bottom=56,working area =192
         private readonly int[] _ulaColours =
         {

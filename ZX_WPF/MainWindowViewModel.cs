@@ -50,20 +50,6 @@ namespace ZX_WPF
 
         public MainWindowViewModel()
         {
-#if DEBUG
-            if (DesignerProperties.GetIsInDesignMode(new DependencyObject()))
-            {
-                Speccy = null!;
-                _soundDevice = null!;
-                _renderTimer = null!;
-                _keyboardListenerTask = null!;
-                _writeableBitmap = null!;
-                _keyArray = Array.Empty<SpectrumKeyCode>();
-                _keyStates = Array.Empty<bool>();
-                OpenFileCommand = ResetCommand = PlayTapeCommand = null!;
-                return;
-            }
-#endif
             _renderTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(20) };
             _keyArray = Enum.GetValues(typeof(SpectrumKeyCode)).Cast<SpectrumKeyCode>().ToArray();
             _keyStates = new bool[_keyArray.Length];
@@ -83,6 +69,7 @@ namespace ZX_WPF
             ResetCommand = new RelayCommand(o => ResetPC());
             PlayTapeCommand = new RelayCommand(o => PlayTape());
             StopTapeCommand = new RelayCommand(o => StopTape());
+
             Initialize();
         }
 

@@ -10,4 +10,13 @@
         Stop,
         Pause
     }
+
+    public enum JoystikButtons
+    {
+        Up = 0,
+        Down = 1,
+        Left = 2,
+        Right = 3,
+        Fire = 4,
+    }
 }

@@ -1,8 +1,8 @@
 ﻿namespace SpectrumPC.Hardware
 {
-    public class RAM
+    internal class RAM
     {
-        private readonly ROM _rom = new ROM();
+        private readonly ROM _rom = new();
 
         private readonly byte[] _ram = new byte[65536];
 
