@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -328,5 +329,84 @@ namespace Speccy.Filetypes
             }
             return snapshot;
         } //LoadZ80
+
+        public static byte[] CreateZ80(Z80_Snapshot snapshot, bool compress = false)
+        {
+            if (snapshot == null)
+                throw new ArgumentNullException(nameof(snapshot));
+
+            if (snapshot.RAM_BANK == null || snapshot.RAM_BANK.Length != 49152)
+                throw new ArgumentException("Snapshot requires a 48K RAM buffer.", nameof(snapshot));
+
+            if (compress)
+                throw new NotSupportedException("Compressed Z80 snapshots are not supported.");
+
+            var header = BuildVersion1Header(snapshot, compress);
+            var output = new byte[header.Length + snapshot.RAM_BANK.Length];
+            Buffer.BlockCopy(header, 0, output, 0, header.Length);
+            Buffer.BlockCopy(snapshot.RAM_BANK, 0, output, header.Length, snapshot.RAM_BANK.Length);
+            return output;
+        }
+
+        private static byte[] BuildVersion1Header(Z80_Snapshot snapshot, bool compress)
+        {
+            var header = new byte[30];
+
+            header[0] = (byte)(snapshot.AF >> 8);
+            header[1] = (byte)(snapshot.AF & 0xFF);
+
+            header[2] = (byte)(snapshot.BC & 0xFF);
+            header[3] = (byte)(snapshot.BC >> 8);
+
+            header[4] = (byte)(snapshot.HL & 0xFF);
+            header[5] = (byte)(snapshot.HL >> 8);
+
+            header[6] = (byte)(snapshot.PC & 0xFF);
+            header[7] = (byte)(snapshot.PC >> 8);
+
+            header[8] = (byte)(snapshot.SP & 0xFF);
+            header[9] = (byte)(snapshot.SP >> 8);
+
+            header[10] = snapshot.I;
+            header[11] = (byte)(snapshot.R & 0x7F);
+
+            var border = (byte)(snapshot.BORDER & 0x07);
+            var rBit7 = (byte)((snapshot.R >> 7) & 0x01);
+            byte header12 = (byte)(rBit7 | (border << 1));
+            if (compress)
+                header12 |= 0x20;
+            header[12] = header12;
+
+            header[13] = (byte)(snapshot.DE & 0xFF);
+            header[14] = (byte)(snapshot.DE >> 8);
+
+            header[15] = (byte)(snapshot.BC_ & 0xFF);
+            header[16] = (byte)(snapshot.BC_ >> 8);
+
+            header[17] = (byte)(snapshot.DE_ & 0xFF);
+            header[18] = (byte)(snapshot.DE_ >> 8);
+
+            header[19] = (byte)(snapshot.HL_ & 0xFF);
+            header[20] = (byte)(snapshot.HL_ >> 8);
+
+            header[21] = (byte)(snapshot.AF_ >> 8);
+            header[22] = (byte)(snapshot.AF_ & 0xFF);
+
+            header[23] = (byte)(snapshot.IY & 0xFF);
+            header[24] = (byte)(snapshot.IY >> 8);
+
+            header[25] = (byte)(snapshot.IX & 0xFF);
+            header[26] = (byte)(snapshot.IX >> 8);
+
+            header[27] = snapshot.IFF1 ? (byte)1 : (byte)0;
+            header[28] = snapshot.IFF2 ? (byte)1 : (byte)0;
+
+            byte header29 = (byte)(snapshot.IM & 0x03);
+            if (snapshot.ISSUE2)
+                header29 |= 0x08;
+            header[29] = header29;
+
+            return header;
+        }
     }
 }

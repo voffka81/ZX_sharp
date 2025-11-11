@@ -22,10 +22,11 @@
             <Button Focusable="False" Height="30" Width="70" Command="{Binding OpenFileCommand}" Margin="5 0 0 5">Load image</Button>
             <Button Focusable="False" Height="30" Width="70" Command="{Binding PlayTapeCommand}" Margin="5 0 0 5">Play Tape</Button>
             <Button Focusable="False" Height="30" Width="70" Command="{Binding StopTapeCommand}" Margin="5 0 0 5" Content="Stop Tape"/>
+            <Button Focusable="False" Height="30" Width="110" Command="{Binding SaveSnapshotCommand}" Margin="5 0 0 5">Save Snapshot</Button>
 
             <Button Name="btnReset" Focusable="False" Height="30" Width="70" Command="{Binding ResetCommand}" Margin="50 0 0 5">Reset PC</Button>
             <TextBlock Text="Vol" VerticalAlignment="Center" Margin="20 0 5 5"/>
-            <Slider Width="140"
+            <Slider Focusable="False" Width="140"
                     Minimum="0"
                     Maximum="1"
                     TickFrequency="0.05"

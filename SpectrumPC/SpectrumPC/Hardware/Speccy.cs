@@ -1,6 +1,7 @@
 ﻿using Speccy.Filetypes;
 using Speccy.Z80_CPU;
 using SpectrumPC.Z80_CPU;
+using System.IO;
 
 namespace SpectrumPC.Hardware
 {
@@ -133,6 +134,57 @@ namespace SpectrumPC.Hardware
         {
             _beeperDevice.Reset();
             _z80.Reset();
+        }
+
+        public void SaveSnapshot(string filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath))
+                throw new ArgumentException("Snapshot file path must be provided.", nameof(filePath));
+
+            var snapshot = CreateSnapshot();
+            var snapshotBytes = Z80File.CreateZ80(snapshot);
+            File.WriteAllBytes(filePath, snapshotBytes);
+        }
+
+        private Z80_Snapshot CreateSnapshot()
+        {
+            var status = _z80.DebugInfo;
+            var snapshot = new Z80_Snapshot
+            {
+                TYPE = 0,
+                AF = status.RegisterAF.w,
+                BC = status.RegisterBC.w,
+                DE = status.RegisterDE.w,
+                HL = status.RegisterHL.w,
+                AF_ = status.RegisterAF_.w,
+                BC_ = status.RegisterBC_.w,
+                DE_ = status.RegisterDE_.w,
+                HL_ = status.RegisterHL_.w,
+                IX = status.RegisterIX.w,
+                IY = status.RegisterIY.w,
+                SP = status.SP,
+                PC = status.PC,
+                I = status.I,
+                IM = status.IM,
+                IFF1 = status.IFF1,
+                IFF2 = status.IFF2,
+                ISSUE2 = false
+            };
+
+            snapshot.R = (byte)((status.R & 0x7F) | ((status.R7 & 0x01) << 7));
+
+            if (_IOdataBus is Bus16Bit bus)
+                snapshot.BORDER = (byte)(bus.BorderColor & 0x07);
+            else
+                snapshot.BORDER = (byte)(_displayUnit.BorderColor & 0x07);
+
+            snapshot.RAM_BANK = new byte[49152];
+            for (int offset = 0; offset < snapshot.RAM_BANK.Length; offset++)
+            {
+                snapshot.RAM_BANK[offset] = _ram.ReadByte(0x4000 + offset);
+            }
+
+            return snapshot;
         }
     }
 }

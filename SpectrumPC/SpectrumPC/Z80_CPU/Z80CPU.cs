@@ -2659,7 +2659,7 @@ namespace SpectrumPC.Z80_CPU
                         IncreaseTStates(23);
                         Address = (ushort)(RegisterI_.w + (sbyte)_memory.ReadByte(_status.PC++));
                         _I__ = new HalfRegister(_memory.ReadByte(Address));
-                        INC(_I__);
+                        DEC(_I__);
                         _memory.WriteByte(Address, _I__.Value);
                         break;
 

@@ -47,6 +47,7 @@ namespace ZX_WPF
         public ICommand ResetCommand { get; set; }
         public ICommand PlayTapeCommand { get; set; }
         public ICommand StopTapeCommand { get; set; }
+        public ICommand SaveSnapshotCommand { get; set; }
 
         public MainWindowViewModel()
         {
@@ -63,12 +64,13 @@ namespace ZX_WPF
 
             Speccy = new Computer();
             _soundDevice = new BeeperProvider();
-            _soundDevice.SetVolume((float)_volume);
+            _soundDevice.SetVolume(ScaleVolume(_volume));
 
             OpenFileCommand = new RelayCommand(o => OpenFile());
             ResetCommand = new RelayCommand(o => ResetPC());
             PlayTapeCommand = new RelayCommand(o => PlayTape());
             StopTapeCommand = new RelayCommand(o => StopTape());
+            SaveSnapshotCommand = new RelayCommand(o => SaveSnapshot());
 
             Initialize();
         }
@@ -87,6 +89,31 @@ namespace ZX_WPF
         }
         private void PlayTape() => Speccy.TapeDevice.Play();
         private void StopTape() => Speccy.TapeDevice.Stop();
+
+        private void SaveSnapshot()
+        {
+            SaveFileDialog saveFileDialog = new SaveFileDialog()
+            {
+                Filter = "Z80 snapshot (*.z80)|*.z80",
+                DefaultExt = ".z80",
+                FileName = "snapshot"
+            };
+
+            if (saveFileDialog.ShowDialog() == true)
+            {
+                try
+                {
+                    lock (_displayLock)
+                    {
+                        Speccy.SaveSnapshot(saveFileDialog.FileName);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Failed to save snapshot: {ex.Message}", "Snapshot Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
 
 
         private void Initialize()
@@ -252,9 +279,15 @@ namespace ZX_WPF
                 }
 
                 _volume = clamped;
-                _soundDevice?.SetVolume((float)_volume);
+                _soundDevice?.SetVolume(ScaleVolume(_volume));
                 OnPropertyChanged();
             }
+        }
+
+        private static float ScaleVolume(double value)
+        {
+            var clamped = Math.Clamp(value, 0.0, 1.0);
+            return (float)Math.Pow(clamped, 2.0);
         }
 
         private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
