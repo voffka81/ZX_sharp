@@ -1,0 +1,65 @@
+name: .NET 10 CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build core and WPF (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore solution
+        run: dotnet restore ZX_sharp.sln
+
+      - name: Build solution (Release)
+        run: dotnet build ZX_sharp.sln --configuration Release --no-restore
+
+  test:
+    name: Unit tests (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore tests
+        run: dotnet restore Tests/ZXSharp.Tests/ZXSharp.Tests.csproj
+
+      - name: Run xUnit tests (Release)
+        run: dotnet test Tests/ZXSharp.Tests/ZXSharp.Tests.csproj --configuration Release --no-restore --logger "trx;LogFileName=unit-tests.trx" --results-directory TestResults
+
+      - name: Upload test results (including failures)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: TestResults/*.trx
+          if-no-files-found: ignore
+          retention-days: 14
