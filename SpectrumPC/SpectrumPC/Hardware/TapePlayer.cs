@@ -30,6 +30,11 @@ namespace SpectrumPC.Hardware
 
         public void LoadTape(byte[] data)
         {
+            ArgumentNullException.ThrowIfNull(data);
+            IsPlaying = false;
+            CurrentTstate = 0;
+            TotalTstates = 0;
+            EarValues.Clear();
             tf.ReadFile(data);
             bool ear = false;
             long tstate = 0;
@@ -38,6 +43,9 @@ namespace SpectrumPC.Hardware
             bool signal;
             foreach (var block in tf.Blocks)
             {
+                if (block.Data.Length == 0)
+                    continue;
+
                 for (int pilotcount = 0; pilotcount < (block.Data[0] < 128 ? 8063 : 3223); pilotcount++)
                 {
                     ear = !ear;

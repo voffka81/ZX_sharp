@@ -4,6 +4,8 @@
     {
         public void ReadFile(byte[] data)
         {
+            ArgumentNullException.ThrowIfNull(data);
+            Blocks.Clear();
             using MemoryStream ms = new MemoryStream(data);
             using BinaryReader reader = new BinaryReader(ms);
             while (reader.BaseStream.Position < reader.BaseStream.Length)

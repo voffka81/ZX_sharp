@@ -10,17 +10,18 @@ namespace SpectrumPC.Hardware
 
         public byte ReadByte(int addr)
         {
-            byte data = addr < 0x4000 ? _rom.Rom[addr] : _ram[addr - 0x4000];
-            return data;
+            // Z80 addresses are 16-bit, including when an instruction crosses 0xFFFF.
+            addr &= 0xFFFF;
+            return addr < _rom.Rom.Length ? _rom.Rom[addr] : _ram[addr - _rom.Rom.Length];
         }
 
         public void WriteByte(int addr, byte val)
         {
-            if (addr >= _rom.Rom.Length && addr< _ram.Length)//ROM
+            addr &= 0xFFFF;
+            if (addr >= _rom.Rom.Length)
             {
-                _ram[addr - _rom.Rom.Length] = val;//RAM
+                _ram[addr - _rom.Rom.Length] = val;
             }
-
         }
 
         private LEWord ReadMemoryWord(int address)
