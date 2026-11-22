@@ -7,7 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SpectrumPC", "SpectrumPC\Sp
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ZX_WPF", "ZX_WPF\ZX_WPF.csproj", "{D4523121-F627-4F5E-B05F-5F23C12341DD}"
 EndProject
-Project("{9A19103F-16F7-4668-B54E-9A1E7A4F7556}") = "ZX_Blazor", "ZX_Blazor\ZX_Blazor.csproj", "{F2C0883E-B35C-4C3E-B50E-7A67E9AB55ED}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ZX_Blazor", "ZX_Blazor\ZX_Blazor.csproj", "{F2C0883E-B35C-4C3E-B50E-7A67E9AB55ED}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
