@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <base href="/" />
+    <title>ZX_sharp — ZX Spectrum 48K</title>
+    <style>
+        :root { font-family: system-ui, sans-serif; color-scheme: dark; background: #10131a; color: #eef0f5; }
+        body { margin: 0; }
+        #app { min-height: 100vh; }
+        .shell { margin: auto; padding: 24px; max-width: 1040px; }
+        .controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 16px 0; }
+        button { padding: 9px 18px; background: #293854; border: 1px solid #55627a; border-radius: 6px; color: inherit; cursor: pointer; }
+        button:hover { background: #394e74; }
+        .screen { width: min(100%, 880px); aspect-ratio: 352 / 296; display: block; background: black; image-rendering: pixelated; outline: 1px solid #565a67; }
+        .screen:focus { outline: 2px solid #84afff; }
+        .hint { color: #a7aebd; }
+        .error { color: #ffaba8; }
+    </style>
+</head>
+<body>
+    <div id="app">Loading ZX_sharp…</div>
+    <script src="_framework/blazor.webassembly.js"></script>
+</body>
+</html>
