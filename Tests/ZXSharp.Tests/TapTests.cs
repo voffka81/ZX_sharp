@@ -10,6 +10,24 @@ public class TapTests
     private static readonly byte[] OneBlock = [0x02, 0x00, 0x00, 0xFF];
 
     [Fact]
+    public void Computer_LoadProgram_MountsTapeWithoutAutoPlay()
+    {
+        var computer = new Computer();
+        computer.LoadProgram("demo.TAP", OneBlock);
+        Assert.Single(computer.TapeDevice.tf.Blocks);
+        Assert.False(computer.TapeDevice.IsPlaying);
+        computer.TapeDevice.Play();
+        Assert.True(computer.TapeDevice.IsPlaying);
+    }
+
+    [Fact]
+    public void Computer_LoadProgram_RejectsUnsupportedFile()
+    {
+        var computer = new Computer();
+        Assert.Throws<NotSupportedException>(() => computer.LoadProgram("demo.sna", OneBlock));
+    }
+
+    [Fact]
     public void Parse_OneTapBlock()
     {
         var tap = new TapFile();
