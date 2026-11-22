@@ -46,13 +46,13 @@ jobs:
           python3 - <<'PY'
           import os
           from pathlib import Path
-          index = Path('published/wwwroot/index.html')
+          index = Path('published/index.html')
           html = index.read_text(encoding='utf-8')
           original = '<base href="/" />'
           assert html.count(original) == 1, "Unexpected base href in published index.html"
           html = html.replace(original, f'<base href="/{os.environ["REPOSITORY_NAME"]}/" />')
           index.write_text(html, encoding='utf-8')
-          Path('published/wwwroot/.nojekyll').touch()
+          Path('published/.nojekyll').touch()
           PY
 
       - name: Setup Pages
@@ -61,7 +61,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: published/wwwroot
+          path: published
 
   deploy:
     name: Deploy to Pages
