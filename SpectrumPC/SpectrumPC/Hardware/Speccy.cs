@@ -108,26 +108,39 @@ namespace SpectrumPC.Hardware
                 : (byte)(bus.keyLine[lineIndex] & ~lineMask);
         }
 
-        public void TapeInput(string tapePath)
+        // Shared entry point for desktop and browser frontends.
+        // A TAP is mounted but not played automatically: the user must issue LOAD "" in BASIC.
+        public void LoadProgram(string fileName, byte[] data)
         {
-            if (tapePath.ToLower().EndsWith(".tap"))
+            ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
+            ArgumentNullException.ThrowIfNull(data);
+
+            string extension = Path.GetExtension(fileName).ToLowerInvariant();
+            if (extension == ".tap")
             {
-                using (MemoryStream ms = new())
-                using (FileStream file = new(tapePath, FileMode.Open, FileAccess.Read))
-                {
-                    byte[] bytes = new byte[file.Length];
-                    file.ReadExactly(bytes, 0, (int)file.Length);
-                    ms.Write(bytes, 0, (int)file.Length);
-                    _tapeDevice.LoadTape(ms.ToArray());
-                }
+                _tapeDevice.LoadTape(data);
+            }
+            else if (extension == ".z80")
+            {
+                using var stream = new MemoryStream(data, writable: false);
+                var snapshot = Z80File.LoadZ80(stream)
+                    ?? throw new InvalidDataException("Empty Z80 snapshot.");
+                if (snapshot.TYPE != 0)
+                    throw new NotSupportedException("Only 48K Z80 snapshots are supported.");
+
+                _displayUnit.BorderColor = snapshot.BORDER;
+                _z80.ApplyZ80Snapshot(snapshot);
             }
             else
             {
-                var z80snap = Z80File.LoadZ80(tapePath);
-                _displayUnit.BorderColor = z80snap.BORDER;
-                _z80.ApplyZ80Snapshot(z80snap);
+                throw new NotSupportedException("Supported program formats are .tap and .z80.");
             }
+        }
 
+        public void TapeInput(string tapePath)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(tapePath);
+            LoadProgram(tapePath, File.ReadAllBytes(tapePath));
         }
 
         public void Reset()
