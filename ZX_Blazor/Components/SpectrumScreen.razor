@@ -1,5 +1,6 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
+@using Microsoft.AspNetCore.Components.Forms
 
 <main class="shell">
     <h1>ZX_sharp — Spectrum 48K</h1>
@@ -9,10 +10,18 @@
     <div class="controls">
         <button @onclick="ToggleRunning">@(_running ? "Pause" : "Run")</button>
         <button @onclick="Reset">Reset</button>
+        <label for="program-file">Load TAP / Z80</label>
+        <InputFile id="program-file" OnChange="LoadProgramAsync" accept=".tap,.z80" />
+        @if (_loadedTape)
+        {
+            <button @onclick="PlayTape">Play tape</button>
+            <button @onclick="StopTape">Stop tape</button>
+        }
         <span>@_status</span>
     </div>
-    <p class="hint">Click the screen, then use the keyboard. Shift = CAPS SHIFT, Ctrl = SYMBOL SHIFT.
-        Audio, tape file picker and snapshot loading will follow in separate changes.</p>
+    <p class="hint">Click the screen for keyboard input. Shift = CAPS SHIFT, Ctrl = SYMBOL SHIFT.
+        TAP: enter LOAD "" in Spectrum BASIC, then click Play tape. Z80: snapshot starts immediately.
+        Audio output is not yet available.</p>
     @if (_error is not null)
     {
         <p class="error">@_error</p>
@@ -32,6 +41,8 @@
     private bool _running = true;
     private string _status = "Starting";
     private string? _error;
+    private bool _loadedTape;
+    private const long MaxProgramSize = 4 * 1024 * 1024;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -91,6 +102,55 @@
             _status = "Emulator error";
             await InvokeAsync(StateHasChanged);
         }
+    }
+
+    private async Task LoadProgramAsync(InputFileChangeEventArgs args)
+    {
+        var file = args.File;
+        bool wasRunning = _running;
+        _running = false;
+        _error = null;
+        _status = $"Loading {file.Name}...";
+        try
+        {
+            var extension = Path.GetExtension(file.Name).ToLowerInvariant();
+            if (extension is not (".tap" or ".z80"))
+                throw new NotSupportedException("Choose a .tap or .z80 file.");
+            if (file.Size == 0 || file.Size > MaxProgramSize)
+                throw new InvalidDataException("File must be between 1 byte and 4 MB.");
+
+            await using var stream = file.OpenReadStream(MaxProgramSize);
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer);
+
+            _computer.LoadProgram(file.Name, buffer.ToArray());
+            _loadedTape = extension == ".tap";
+            _status = _loadedTape
+                ? $"Mounted {file.Name}. Enter LOAD \"\" in BASIC, then press Play tape."
+                : $"Loaded snapshot {file.Name}.";
+        }
+        catch (Exception ex)
+        {
+            _error = $"Could not load {file.Name}: {ex.Message}";
+            _status = "Load failed";
+        }
+        finally
+        {
+            _running = wasRunning;
+            StateHasChanged();
+        }
+    }
+
+    private void PlayTape()
+    {
+        _computer.TapeDevice.Play();
+        _status = "Tape playing";
+    }
+
+    private void StopTape()
+    {
+        _computer.TapeDevice.Stop();
+        _status = "Tape stopped";
     }
 
     private void ToggleRunning()
