@@ -38,7 +38,8 @@ jobs:
       - name: Publish Blazor
         run: dotnet publish ZX_Blazor/ZX_Blazor.csproj -c Release -o published
 
-      - name: Set GitHub Pages base path and disable Jekyll
+      - name: Locate published static site and configure Pages path
+        id: prepare
         shell: bash
         env:
           REPOSITORY_NAME: ${{ github.event.repository.name }}
@@ -46,13 +47,23 @@ jobs:
           python3 - <<'PY'
           import os
           from pathlib import Path
-          index = Path('published/index.html')
+          root = Path('published')
+          indexes = sorted(root.rglob('index.html'))
+          print('Publish output files:', *[str(p) for p in root.rglob('*') if p.is_file()][:60], sep='\n  ')
+          if len(indexes) != 1:
+              raise SystemExit(f'Expected exactly one published index.html; found: {indexes}')
+          index = indexes[0]
+          site_dir = index.parent
           html = index.read_text(encoding='utf-8')
           original = '<base href="/" />'
-          assert html.count(original) == 1, "Unexpected base href in published index.html"
+          if html.count(original) != 1:
+              raise SystemExit(f'Unexpected base href in {index}')
           html = html.replace(original, f'<base href="/{os.environ["REPOSITORY_NAME"]}/" />')
           index.write_text(html, encoding='utf-8')
-          Path('published/.nojekyll').touch()
+          (site_dir / '.nojekyll').touch()
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+              output.write(f'site_path={site_dir}\n')
+          print(f'Pages static site directory: {site_dir}')
           PY
 
       - name: Setup Pages
@@ -61,7 +72,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: published
+          path: ${{ steps.prepare.outputs.site_path }}
 
   deploy:
     name: Deploy to Pages
